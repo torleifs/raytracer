@@ -1,4 +1,5 @@
 mod canvas;
+mod color;
 mod math;
 struct Environment {
   pub gravity: math::Tuple,
@@ -33,7 +34,7 @@ fn main() {
   };
   let mut new_proj = projectile;
   let mut c = canvas::Canvas::new(900, 550);
-  let color = math::Color::new(1.0, 0.0, 0.0);
+  let color = color::Color::new(1.0, 0.0, 0.0);
   while new_proj.position.y > 0.0 {
     new_proj = tick(&env, new_proj);
     println!("{:?}", new_proj.position);
