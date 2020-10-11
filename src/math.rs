@@ -15,7 +15,7 @@ impl ops::Add<&Tuple> for Tuple {
     if self.is_point() && other.is_point() {
       panic!("Adding two points does not make sense");
     }
-    Tuple::tuple(
+    Tuple::new(
       self.x + other.x,
       self.y + other.y,
       self.z + other.z,
@@ -26,7 +26,7 @@ impl ops::Add<&Tuple> for Tuple {
 impl ops::Sub<&Tuple> for Tuple {
   type Output = Tuple;
   fn sub(self, other: &Tuple) -> Tuple {
-    Tuple::tuple(
+    Tuple::new(
       self.x - other.x,
       self.y - other.y,
       self.z - other.z,
@@ -37,7 +37,7 @@ impl ops::Sub<&Tuple> for Tuple {
 impl ops::Mul<f64> for Tuple {
   type Output = Tuple;
   fn mul(self, scalar: f64) -> Tuple {
-    Tuple::tuple(
+    Tuple::new(
       scalar * self.x,
       scalar * self.y,
       scalar * self.z,
@@ -48,7 +48,7 @@ impl ops::Mul<f64> for Tuple {
 impl ops::Div<f64> for Tuple {
   type Output = Tuple;
   fn div(self, scalar: f64) -> Tuple {
-    Tuple::tuple(
+    Tuple::new(
       self.x / scalar,
       self.y / scalar,
       self.z / scalar,
@@ -59,7 +59,7 @@ impl ops::Div<f64> for Tuple {
 impl ops::Neg for Tuple {
   type Output = Tuple;
   fn neg(self) -> Tuple {
-    Tuple::tuple(-self.x, -self.y, -self.z, -self.w)
+    Tuple::new(-self.x, -self.y, -self.z, -self.w)
   }
 }
 impl cmp::PartialEq for Tuple {
@@ -85,14 +85,14 @@ impl Tuple {
   }
   pub fn normalize(&self) -> Tuple {
     let magnitude = self.magnitude();
-    Tuple::tuple(
+    Tuple::new(
       self.x / magnitude,
       self.y / magnitude,
       self.z / magnitude,
       self.w / magnitude,
     )
   }
-  pub fn tuple(x: f64, y: f64, z: f64, w: f64) -> Tuple {
+  pub fn new(x: f64, y: f64, z: f64, w: f64) -> Tuple {
     Tuple { x, y, z, w }
   }
   pub fn point(x: f64, y: f64, z: f64) -> Tuple {
@@ -124,7 +124,7 @@ mod tests {
   use super::Tuple;
   #[test]
   fn a_tuple_with_w_1_is_a_point() {
-    let a = Tuple::tuple(4.3, -4.2, 3.1, 1.0);
+    let a = Tuple::new(4.3, -4.2, 3.1, 1.0);
     assert_eq!(a.x, 4.3);
     assert_eq!(a.y, -4.2);
     assert_eq!(a.z, 3.1);
@@ -134,7 +134,7 @@ mod tests {
 
   #[test]
   fn a_tuple_with_w_0_is_a_vector() {
-    let a = Tuple::tuple(4.3, -4.2, 3.1, 0.0);
+    let a = Tuple::new(4.3, -4.2, 3.1, 0.0);
     assert_eq!(a.x, 4.3);
     assert_eq!(a.y, -4.2);
     assert_eq!(a.z, 3.1);
@@ -154,8 +154,8 @@ mod tests {
   }
   #[test]
   fn adding_two_tuples() {
-    let a = Tuple::tuple(3.0, -2.0, 5.0, 1.0);
-    let b = Tuple::tuple(-2.0, 3.0, 1.0, 0.0);
+    let a = Tuple::new(3.0, -2.0, 5.0, 1.0);
+    let b = Tuple::new(-2.0, 3.0, 1.0, 0.0);
     let answer = a + &b;
     let correct_answer = Tuple {
       x: 1.0,
@@ -209,31 +209,31 @@ mod tests {
   }
   #[test]
   fn negate_tuple() {
-    let a = Tuple::tuple(1.0, -2.0, 3.0, -4.0);
+    let a = Tuple::new(1.0, -2.0, 3.0, -4.0);
     let negated_tuple = -a;
-    let correct_answer = Tuple::tuple(-1.0, 2.0, -3.0, 4.0);
+    let correct_answer = Tuple::new(-1.0, 2.0, -3.0, 4.0);
     assert!(negated_tuple.is_equal(&correct_answer))
   }
   #[test]
   fn multiply_tuple_by_scalar() {
-    let a = Tuple::tuple(1.0, -2.0, 3.0, -4.0);
+    let a = Tuple::new(1.0, -2.0, 3.0, -4.0);
     let answer = a * 3.5;
-    let correct_answer = Tuple::tuple(3.5, -7.0, 10.5, -14.0);
+    let correct_answer = Tuple::new(3.5, -7.0, 10.5, -14.0);
     assert!(answer.is_equal(&correct_answer));
   }
 
   #[test]
   fn multiply_tuple_by_fraction() {
-    let a = Tuple::tuple(1.0, -2.0, 3.0, -4.0);
+    let a = Tuple::new(1.0, -2.0, 3.0, -4.0);
     let answer = a * 0.5;
-    let correct_answer = Tuple::tuple(0.5, -1.0, 1.5, -2.0);
+    let correct_answer = Tuple::new(0.5, -1.0, 1.5, -2.0);
     assert!(answer.is_equal(&correct_answer));
   }
   #[test]
   fn divide_tuple_by_scalar() {
-    let a = Tuple::tuple(1.0, -2.0, 3.0, -4.0);
+    let a = Tuple::new(1.0, -2.0, 3.0, -4.0);
     let answer = a / 2.0;
-    let correct_answer = Tuple::tuple(0.5, -1.0, 1.5, -2.0);
+    let correct_answer = Tuple::new(0.5, -1.0, 1.5, -2.0);
     assert!(answer.is_equal(&correct_answer));
   }
   #[test]

@@ -66,12 +66,13 @@ impl ops::Mul<math::Tuple> for Matrix {
         + self[row][2] * tuple.z
         + self[row][3] * tuple.w
     }
-    return math::Tuple::tuple(res[0], res[1], res[2], res[3]);
+    return math::Tuple::new(res[0], res[1], res[2], res[3]);
   }
 }
 impl Matrix {
-  pub fn new(rows: usize, cols: usize, data: &[&[f64]]) -> Matrix {
-    assert_eq!(rows, data.len());
+  pub fn new(data: &[&[f64]]) -> Matrix {
+    let rows = data.len();
+    let cols = data[0].len();
     for r in data {
       assert_eq!(cols, r.len());
     }
@@ -90,16 +91,12 @@ impl Matrix {
 
 #[test]
 fn construct_and_inspect_4x4_matrix() {
-  let m: Matrix = Matrix::new(
-    4,
-    4,
-    &[
-      &[1.0, 2.0, 3.0, 4.0],
-      &[5.5, 6.5, 7.5, 8.5],
-      &[9.0, 10.0, 11.0, 12.0],
-      &[13.5, 14.5, 15.5, 16.5],
-    ],
-  );
+  let m: Matrix = Matrix::new(&[
+    &[1.0, 2.0, 3.0, 4.0],
+    &[5.5, 6.5, 7.5, 8.5],
+    &[9.0, 10.0, 11.0, 12.0],
+    &[13.5, 14.5, 15.5, 16.5],
+  ]);
   assert!(math::equal(m[0][0], 1.0));
   assert!(math::equal(m[0][3], 4.0));
   assert!(math::equal(m[1][0], 5.5));
@@ -113,7 +110,7 @@ fn construct_and_inspect_4x4_matrix() {
 
 #[test]
 fn construct_and_inspect_2x2_matrix() {
-  let m = Matrix::new(2, 2, &[&[-3., 5.], &[1., -2.]]);
+  let m = Matrix::new(&[&[-3., 5.], &[1., -2.]]);
 
   assert!(math::equal(m[0][0], -3.));
   assert!(math::equal(m[0][1], 5.));
@@ -123,7 +120,7 @@ fn construct_and_inspect_2x2_matrix() {
 
 #[test]
 fn construct_and_inspect_3x3_matrix() {
-  let m = Matrix::new(3, 3, &[&[-3., 5., 0.], &[1., -2., -7.], &[0., 1., 1.]]);
+  let m = Matrix::new(&[&[-3., 5., 0.], &[1., -2., -7.], &[0., 1., 1.]]);
 
   assert!(math::equal(m[0][0], -3.));
   assert!(math::equal(m[1][1], -2.));
@@ -132,134 +129,96 @@ fn construct_and_inspect_3x3_matrix() {
 
 #[test]
 fn matrix_equality_identical_matrices() {
-  let a = Matrix::new(
-    4,
-    4,
-    &[
-      &[1., 2., 3., 4.],
-      &[5., 6., 7., 8.],
-      &[9., 8., 7., 6.],
-      &[5., 4., 3., 2.],
-    ],
-  );
+  let a = Matrix::new(&[
+    &[1., 2., 3., 4.],
+    &[5., 6., 7., 8.],
+    &[9., 8., 7., 6.],
+    &[5., 4., 3., 2.],
+  ]);
 
-  let b = Matrix::new(
-    4,
-    4,
-    &[
-      &[1., 2., 3., 4.],
-      &[5., 6., 7., 8.],
-      &[9., 8., 7., 6.],
-      &[5., 4., 3., 2.],
-    ],
-  );
+  let b = Matrix::new(&[
+    &[1., 2., 3., 4.],
+    &[5., 6., 7., 8.],
+    &[9., 8., 7., 6.],
+    &[5., 4., 3., 2.],
+  ]);
   assert_eq!(a, b);
 }
 
 #[test]
 fn matrix_equality_different_matrices() {
-  let a = Matrix::new(
-    4,
-    4,
-    &[
-      &[1., 2., 3., 4.],
-      &[5., 6., 7., 8.],
-      &[9., 8., 7., 6.],
-      &[5., 4., 3., 2.],
-    ],
-  );
+  let a = Matrix::new(&[
+    &[1., 2., 3., 4.],
+    &[5., 6., 7., 8.],
+    &[9., 8., 7., 6.],
+    &[5., 4., 3., 2.],
+  ]);
 
-  let b = Matrix::new(
-    4,
-    4,
-    &[
-      &[2., 3., 4., 5.],
-      &[6., 7., 8., 9.],
-      &[8., 7., 6., 5.],
-      &[4., 3., 2., 1.],
-    ],
-  );
+  let b = Matrix::new(&[
+    &[2., 3., 4., 5.],
+    &[6., 7., 8., 9.],
+    &[8., 7., 6., 5.],
+    &[4., 3., 2., 1.],
+  ]);
   assert_ne!(a, b);
 }
 
 #[test]
 fn matrix_multiplication() {
-  let a = Matrix::new(
-    4,
-    4,
-    &[
-      &[1., 2., 3., 4.],
-      &[5., 6., 7., 8.],
-      &[9., 8., 7., 6.],
-      &[5., 4., 3., 2.],
-    ],
-  );
+  let a = Matrix::new(&[
+    &[1., 2., 3., 4.],
+    &[5., 6., 7., 8.],
+    &[9., 8., 7., 6.],
+    &[5., 4., 3., 2.],
+  ]);
 
-  let b = Matrix::new(
-    4,
-    4,
-    &[
-      &[-2., 1., 2., 3.],
-      &[3., 2., 1., -1.],
-      &[4., 3., 6., 5.],
-      &[1., 2., 7., 8.],
-    ],
-  );
+  let b = Matrix::new(&[
+    &[-2., 1., 2., 3.],
+    &[3., 2., 1., -1.],
+    &[4., 3., 6., 5.],
+    &[1., 2., 7., 8.],
+  ]);
   let c = &a * &b;
-  let answer = Matrix::new(
-    4,
-    4,
-    &[
-      &[20., 22., 50., 48.],
-      &[44., 54., 114., 108.],
-      &[40., 58., 110., 102.],
-      &[16., 26., 46., 42.],
-    ],
-  );
+  let answer = Matrix::new(&[
+    &[20., 22., 50., 48.],
+    &[44., 54., 114., 108.],
+    &[40., 58., 110., 102.],
+    &[16., 26., 46., 42.],
+  ]);
   assert_eq!(c, answer);
 }
 
 #[test]
 fn matrix_multiplication_by_tuple() {
-  let a = Matrix::new(
-    4,
-    4,
-    &[
-      &[1., 2., 3., 4.],
-      &[2., 4., 4., 2.],
-      &[8., 6., 4., 1.],
-      &[0., 0., 0., 1.],
-    ],
-  );
+  let a = Matrix::new(&[
+    &[1., 2., 3., 4.],
+    &[2., 4., 4., 2.],
+    &[8., 6., 4., 1.],
+    &[0., 0., 0., 1.],
+  ]);
 
-  let b = math::Tuple::tuple(1., 2., 3., 1.);
+  let b = math::Tuple::new(1., 2., 3., 1.);
   let c = a * b;
-  let answer = math::Tuple::tuple(18., 24., 33., 1.);
+  let answer = math::Tuple::new(18., 24., 33., 1.);
   assert_eq!(c, answer);
 }
 
 #[test]
 fn multiply_matrix_with_identity_matrix() {
-  let a = Matrix::new(
-    4,
-    4,
-    &[
-      &[0., 1., 2., 4.],
-      &[1., 2., 4., 8.],
-      &[2., 4., 8., 16.],
-      &[4., 8., 16., 32.],
-    ],
-  );
-  let b = Matrix::new(
-    4,
-    4,
-    &[
-      &[1., 0., 0., 0.],
-      &[0., 1., 0., 0.],
-      &[0., 0., 1., 0.],
-      &[0., 0., 0., 1.],
-    ],
-  );
+  let a = Matrix::new(&[
+    &[0., 1., 2., 4.],
+    &[1., 2., 4., 8.],
+    &[2., 4., 8., 16.],
+    &[4., 8., 16., 32.],
+  ]);
+  let b = Matrix::new(&[
+    &[1., 0., 0., 0.],
+    &[0., 1., 0., 0.],
+    &[0., 0., 1., 0.],
+    &[0., 0., 0., 1.],
+  ]);
   let answer = &a * &b;
   assert_eq!(a, answer);
 }
+#[test]
+fn transpose_matrix() {}
