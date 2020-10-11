@@ -1,6 +1,7 @@
 mod canvas;
 mod color;
 mod math;
+mod matrix;
 struct Environment {
   pub gravity: math::Tuple,
   pub wind: math::Tuple,

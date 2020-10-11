@@ -1,4 +1,6 @@
+use std::cmp;
 use std::ops;
+
 #[derive(Debug, Clone)]
 pub struct Tuple {
   pub x: f64,
@@ -58,6 +60,11 @@ impl ops::Neg for Tuple {
   type Output = Tuple;
   fn neg(self) -> Tuple {
     Tuple::tuple(-self.x, -self.y, -self.z, -self.w)
+  }
+}
+impl cmp::PartialEq for Tuple {
+  fn eq(&self, other: &Self) -> bool {
+    self.x == other.x && self.y == other.y && self.z == other.z && self.w == other.w
   }
 }
 impl Tuple {
