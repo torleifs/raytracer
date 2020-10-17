@@ -114,8 +114,13 @@ impl Tuple {
 }
 
 pub fn equal(a: f64, b: f64) -> bool {
-  const EPSILON: f64 = 0.00001;
-  f64::abs(a - b) < EPSILON
+  const EPSILON: f64 = 0.0001;
+  if f64::abs(a - b) < EPSILON {
+    return true;
+  } else {
+    println!("{} is not equal to {}", a, b);
+    return false;
+  }
 }
 
 #[cfg(test)]
