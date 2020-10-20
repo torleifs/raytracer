@@ -1,6 +1,8 @@
 use crate::math;
 use std::ops;
 
+use crate::util;
+
 #[derive(Clone)]
 pub struct Color {
   tuple: math::Tuple,
@@ -52,9 +54,9 @@ impl Color {
     self.tuple.z
   }
   pub fn is_equal(&self, other: &Color) -> bool {
-    math::equal(self.r(), other.r())
-      && math::equal(self.g(), other.g())
-      && math::equal(self.b(), other.b())
+    util::equal(self.r(), other.r())
+      && util::equal(self.g(), other.g())
+      && util::equal(self.b(), other.b())
   }
 }
 #[cfg(test)]

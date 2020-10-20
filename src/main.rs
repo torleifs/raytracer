@@ -1,9 +1,10 @@
 mod canvas;
 mod color;
 mod math;
-mod matrix;
+mod util;
+
 struct Environment {
-  pub gravity: math::Tuple,
+  pub gravity: math::tuple::Tuple,
   pub wind: math::Tuple,
 }
 #[derive(Clone)]
