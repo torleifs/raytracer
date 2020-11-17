@@ -24,6 +24,20 @@ impl ops::Add<&Tuple> for Tuple {
     )
   }
 }
+impl ops::Add<&Tuple> for &Tuple {
+  type Output = Tuple;
+  fn add(self, other: &Tuple) -> Tuple {
+    if self.is_point() && other.is_point() {
+      panic!("Adding two points does not make sense");
+    }
+    Tuple::new(
+      self.x + other.x,
+      self.y + other.y,
+      self.z + other.z,
+      self.w + other.w,
+    )
+  }
+}
 impl ops::Sub<&Tuple> for Tuple {
   type Output = Tuple;
   fn sub(self, other: &Tuple) -> Tuple {
@@ -35,7 +49,29 @@ impl ops::Sub<&Tuple> for Tuple {
     )
   }
 }
+impl<'a> ops::Sub<&Tuple> for &'a Tuple {
+  type Output = Tuple;
+  fn sub(self, other: &Tuple) -> Tuple {
+    Tuple::new(
+      self.x - other.x,
+      self.y - other.y,
+      self.z - other.z,
+      self.w - other.w,
+    )
+  }
+}
 impl ops::Mul<f64> for Tuple {
+  type Output = Tuple;
+  fn mul(self, scalar: f64) -> Tuple {
+    Tuple::new(
+      scalar * self.x,
+      scalar * self.y,
+      scalar * self.z,
+      scalar * self.w,
+    )
+  }
+}
+impl ops::Mul<f64> for &Tuple {
   type Output = Tuple;
   fn mul(self, scalar: f64) -> Tuple {
     Tuple::new(

@@ -10,15 +10,17 @@ pub struct Canvas {
 
 impl Canvas {
     pub fn pixel_at(&self, x: i32, y: i32) -> &color::Color {
-        let mirrored_y = self.height - y - 1;
-        let index_of_pixel = mirrored_y * self.width + x;
+        let shifted_mirrored_y = self.height - y - 1 - self.height / 2;
+        let shifted_x = x + self.width / 2;
+        let index_of_pixel = shifted_mirrored_y * self.width + shifted_x;
         &(self.pixels[index_of_pixel as usize])
     }
 
     pub fn write_pixel(&mut self, x: i32, y: i32, color: color::Color) {
-        let mirrored_y = self.height - y - 1;
-        let index_of_pixel = mirrored_y * self.width + x;
-        if x < self.width && mirrored_y < self.height {
+        let mirrored_y = self.height - y - 1 - self.height / 2;
+        let shifted_x = x + self.width / 2;
+        let index_of_pixel = mirrored_y * self.width + shifted_x;
+        if x < self.width / 2 && mirrored_y < self.height {
             self.pixels[index_of_pixel as usize] = color;
         }
     }
@@ -107,8 +109,8 @@ mod tests {
         let c = Canvas::new(10, 20);
         assert_eq!(c.width, 10);
         assert_eq!(c.height, 20);
-        for x in 0..10 {
-            for y in 0..20 {
+        for x in -5..5 {
+            for y in -10..10 {
                 let color = c.pixel_at(x, y);
                 assert!(color.is_equal(&color::Color::new(0.0, 0.0, 0.0)))
             }
@@ -135,19 +137,19 @@ mod tests {
     }
     #[test]
     fn construct_ppm_pixel_data() {
-        let mut c = Canvas::new(5, 3);
+        let mut c = Canvas::new(6, 4);
         let c1 = color::Color::new(1.5, 0.0, 0.0);
         let c2 = color::Color::new(0.0, 0.5, 0.0);
         let c3 = color::Color::new(-0.5, 0.0, 1.0);
 
-        c.write_pixel(0, 0, c1);
-        c.write_pixel(2, 1, c2);
-        c.write_pixel(4, 2, c3);
+        c.write_pixel(2, 1, c1);
+        c.write_pixel(0, 0, c2);
+        c.write_pixel(-3, -1, c3);
         let ppm = c.to_ppm();
         let lines = ppm.lines().collect::<Vec<_>>();
-        assert_eq!(lines[3], "0 0 0 0 0 0 0 0 0 0 0 0 0 0 255");
-        assert_eq!(lines[4], "0 0 0 0 0 0 0 128 0 0 0 0 0 0 0");
-        assert_eq!(lines[5], "255 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
+        assert_eq!(lines[3], "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 255 0 0");
+        assert_eq!(lines[4], "0 0 0 0 0 0 0 0 0 0 128 0 0 0 0 0 0 0");
+        assert_eq!(lines[5], "0 0 255 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
     }
 
     #[test]

@@ -4,7 +4,7 @@ use std::ops;
 use crate::math;
 use crate::util;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Matrix {
     pub rows: usize,
     pub cols: usize,
@@ -42,6 +42,27 @@ impl cmp::PartialEq for Matrix {
 impl<'a> ops::Mul for &'a Matrix {
     type Output = Matrix;
     fn mul(self, other: &'a Matrix) -> Matrix {
+        assert_eq!(self.cols, other.rows);
+        let mut res = Matrix {
+            rows: self.rows,
+            cols: other.cols,
+            data: vec![0.; self.rows * other.cols],
+        };
+        for row in 0..self.rows {
+            for column in 0..self.cols {
+                let mut dot = 0.0;
+                for i in 0..self.rows {
+                    dot += self[row][i] * other[i][column];
+                }
+                res[row][column] = dot;
+            }
+        }
+        res
+    }
+}
+impl ops::Mul for Matrix {
+    type Output = Matrix;
+    fn mul(self, other: Matrix) -> Matrix {
         assert_eq!(self.cols, other.rows);
         let mut res = Matrix {
             rows: self.rows,
@@ -119,13 +140,12 @@ impl Matrix {
 
     pub fn translation(x: f64, y: f64, z: f64) -> math::Matrix {
         math::Matrix::new(&[
-          &[1., 0., 0., x],
-          &[0., 1., 0., y],
-          &[0., 0., 1., z],
-          &[0., 0., 0., 1.],
+            &[1., 0., 0., x],
+            &[0., 1., 0., y],
+            &[0., 0., 1., z],
+            &[0., 0., 0., 1.],
         ])
-      }
-      
+    }
     pub fn scale(x: f64, y: f64, z: f64) -> math::Matrix {
         math::Matrix::new(&[
             &[x, 0., 0., 0.],
@@ -155,6 +175,14 @@ impl Matrix {
             &[angle.cos(), -angle.sin(), 0., 0.],
             &[angle.sin(), angle.cos(), 0., 0.],
             &[0., 0., 1., 0.],
+            &[0., 0., 0., 1.],
+        ])
+    }
+    pub fn shear(x_y: f64, x_z: f64, y_x: f64, y_z: f64, z_x: f64, z_y: f64) -> Matrix {
+        math::Matrix::new(&[
+            &[1., x_y, x_z, 0.],
+            &[y_x, 1., y_z, 0.],
+            &[z_x, z_y, 1., 0.],
             &[0., 0., 0., 1.],
         ])
     }

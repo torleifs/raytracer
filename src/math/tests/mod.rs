@@ -662,6 +662,72 @@ pub fn rotate_point_around_z_axis() {
     assert_eq!(&full_quarter * &p, Tuple::point(-1., 0., 0.));
 }
 
+#[test]
+pub fn shearing_transform_moves_x_in_proportion_to_y() {
+  let transform = Matrix::shear(1., 0., 0., 0., 0., 0.);
+  let p = Tuple::point(2., 3., 4.);
+  assert_eq!(&transform * &p, Tuple::point(5., 3., 4.));
+}
+
+#[test]
+pub fn shearing_transform_moves_x_in_proportion_to_z() {
+  let transform = Matrix::shear(0., 1., 0., 0., 0., 0.);
+  let p = Tuple::point(2., 3., 4.);
+  assert_eq!(&transform * &p, Tuple::point(6., 3., 4.));
+}
+
+#[test]
+pub fn shearing_transform_moves_y_in_proportion_to_x() {
+  let transform = Matrix::shear(0., 0., 1., 0., 0., 0.);
+  let p = Tuple::point(2., 3., 4.);
+  assert_eq!(&transform * &p, Tuple::point(2., 5., 4.));
+}
+
+#[test]
+pub fn shearing_transform_moves_y_in_proportion_to_z() {
+  let transform = Matrix::shear(0., 0., 0., 1., 0., 0.);
+  let p = Tuple::point(2., 3., 4.);
+  assert_eq!(&transform * &p, Tuple::point(2., 7., 4.));
+}
+
+#[test]
+pub fn shearing_transform_moves_z_in_proportion_to_x() {
+  let transform = Matrix::shear(0., 0., 0., 0., 1., 0.);
+  let p = Tuple::point(2., 3., 4.);
+  assert_eq!(&transform * &p, Tuple::point(2., 3., 6.));
+}
 
 
-  
+#[test]
+pub fn shearing_transform_moves_z_in_proportion_to_y() {
+  let transform = Matrix::shear(0., 0., 0., 0., 0., 1.);
+  let p = Tuple::point(2., 3., 4.);
+  assert_eq!(&transform * &p, Tuple::point(2., 3., 7.));
+}
+
+#[test]
+pub fn individual_transforms_are_applied_in_sequence() {
+  let p= Tuple::point(1., 0., 1.);
+  let a= Matrix::rotation_x(consts::PI/2.);
+  let b= Matrix::scale(5., 5., 5.);
+  let c= Matrix::translation(10., 5., 7.);
+
+  let p2 = &a * &p;
+  assert_eq!(p2, Tuple::point(1., -1., 0.));
+
+  let p3 = &b * &p2;
+  assert_eq!(p3, Tuple::point(5., -5., 0.));
+
+  let p4 = &c * &p3;
+  assert_eq!(p4, Tuple::point(15., 0., 7.));
+}
+
+#[test]
+pub fn chained_transforms_must_be_applied_reverse() {
+  let p = Tuple::point(1., 0., 1.);
+  let a= Matrix::rotation_x(consts::PI/2.);
+  let b= Matrix::scale(5., 5., 5.);
+  let c= Matrix::translation(10., 5., 7.);
+  let t = c * b * a;
+  assert_eq!(&t * &p, Tuple::point(15., 0., 7.));
+}
