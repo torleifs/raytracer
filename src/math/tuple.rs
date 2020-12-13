@@ -148,4 +148,8 @@ impl Tuple {
       a.x * b.y - a.y * b.x,
     )
   }
+  pub fn reflect(in_vector: &Tuple, normal: &Tuple) -> Tuple {
+    let dot_product = Tuple::dot(in_vector, normal);
+    in_vector - &(normal * 2. * dot_product)
+  }
 }

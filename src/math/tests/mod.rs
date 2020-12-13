@@ -167,7 +167,25 @@ use crate::util;
     assert!(answer.is_equal(&Tuple::vector(1.0, -2.0, 1.0)));
   }
 
+  #[test]
+  fn reflect_45dg_vector() {
+    let v = Tuple::vector(1., -1., 0.);
+    let n = Tuple::vector(0., 1., 0.);
+    let r = Tuple::reflect(&v, &n);
 
+    assert_eq!(r, Tuple::vector(1., 1., 0.))
+  }
+
+  #[test]
+  fn reflect_slanted_surface() {
+    let v = Tuple::vector(0., -1., 0.);
+    let n = Tuple::vector((2.0 as f64).sqrt() / 2., (2.0 as f64).sqrt() / 2., 0.);
+
+    let r = Tuple::reflect(&v, &n);
+
+    assert_eq!(r, Tuple::vector(1., 0., 0.))
+  }
+///////////////////////////////////////
   #[test]
   fn construct_and_inspect_4x4_matrix() {
       let m: Matrix = Matrix::new(&[

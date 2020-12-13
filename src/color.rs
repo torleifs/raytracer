@@ -1,9 +1,10 @@
-use crate::math;
+use crate::math::{self, Tuple};
+use std::cmp;
 use std::ops;
 
 use crate::util;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Color {
   tuple: math::Tuple,
 }
@@ -25,11 +26,35 @@ impl ops::Mul<f64> for Color {
     Color::from_tuple(self.tuple * rhs)
   }
 }
+impl ops::Mul<f64> for  &Color {
+  type Output = Color;
+  fn mul(self, rhs: f64) -> Color {
+    Color::from_tuple(self.tuple.clone() * rhs)
+  }
+}
+
+impl cmp::PartialEq for Color {
+  fn eq(&self, other: &Self) -> bool {
+    self.is_equal(other)
+  }
+}
 // hadamard product
 impl ops::Mul<Color> for Color {
   type Output = Color;
   fn mul(self, rhs: Color) -> Color {
     Color::new(self.r() * rhs.r(), self.g() * rhs.g(), self.b() * rhs.b())
+  }
+}
+impl<'a> ops::Mul for &'a Color {
+  type Output = Color;
+  fn mul(self, other: &'a Color) -> Color {
+      Color::new(self.r() * other.r(), self.g() * other.g(), self.b() * other.b())
+  }
+}
+impl<'a> ops::Mul<&Tuple> for &'a Color {
+  type Output = Color;
+  fn mul(self, other: & Tuple) -> Color {
+      Color::new(self.r() * other.x, self.g() * other.y, self.b() * other.z)
   }
 }
 impl Color {
