@@ -55,15 +55,7 @@ impl Ray {
 
     vec
   }
-  pub fn intersect_world(w: World, ray: &Ray) -> Vec<Intersection> {
-    let mut vec: Vec<Intersection> = Vec::new();
-    for shape in w.shapes {
-      let mut intersections = Ray::intersects(&shape, ray);
-      vec.append(&mut intersections);
-    }
-    vec.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
-    vec
-  }
+ 
 
   pub fn transform(&self, m: &Matrix) -> Ray {
     Ray {
@@ -75,12 +67,19 @@ impl Ray {
 
   pub fn precompute(i: &Intersection, r: &Ray)-> PreComputation {
     let pos = Ray::position(r, i.t);
+    let eye_vector = - r.direction.clone();
+    let mut normal_vector= i.shape.normal_at(&pos);
+    let inside = Tuple::dot(&normal_vector, &eye_vector) < 0.;
+    if inside {
+      normal_vector = - normal_vector;
+    }
     PreComputation {
       t: i.t,
       shape: i.shape.clone(),
       point: pos.clone(),
-      eye_vector: - r.direction.clone(),
-      normal_vector: i.shape.normal_at(&pos)
+      eye_vector,
+      normal_vector,
+      inside,
     }
   }
 }
@@ -90,6 +89,7 @@ pub struct PreComputation {
   pub point: Tuple,
   pub eye_vector: Tuple,
   pub normal_vector: Tuple,
+  pub inside: bool
 }
 #[derive( Debug, Clone)]
 pub struct Intersection {

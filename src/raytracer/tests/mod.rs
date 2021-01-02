@@ -4,6 +4,7 @@ use super::Intersection;
 use super::Ray;
 use super::Sphere;
 use super::World;
+use super::Camera;
 use super::lights::PointLight;
 use super::materials::Material;
 use crate::math::Matrix;
@@ -437,7 +438,7 @@ pub fn default_world() {
 pub fn intersect_world_ray() {
   let w = World::default();
   let ray = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
-  let xs = Ray::intersect_world(w, &ray);
+  let xs = w.intersect_world(&ray);
   assert_eq!(xs.len(), 4);
   assert!(util::equal(xs[0].t, 4.0));
   assert!(util::equal(xs[1].t, 4.5));
@@ -454,4 +455,206 @@ pub fn precompute_intersect() {
   assert_eq!(comps.point, Tuple::point(0., 0., -1.));
   assert_eq!(comps.eye_vector, Tuple::vector(0., 0., -1.));
   assert_eq!(comps.normal_vector, Tuple::vector(0., 0., -1.));
+}
+
+#[test]
+pub fn precompute_outside() {
+  let ray = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
+  let shape:Rc<dyn Shape> = Rc::new(Sphere::new());
+  let i = Intersection::new(&shape, 4.0);
+  let comps = Ray::precompute(&i, &ray);
+  assert!(!comps.inside);
+}
+
+#[test]
+pub fn precompute_inside() {
+  let ray = Ray::new(&Tuple::point(0., 0., 0.), &Tuple::vector(0., 0., 1.));
+  let shape:Rc<dyn Shape> = Rc::new(Sphere::new());
+  let i = Intersection::new(&shape, 1.0);
+
+  let comps = Ray::precompute(&i, &ray);
+
+  assert!(comps.inside);
+  assert_eq!(comps.normal_vector, Tuple::vector(0., 0., -1.));
+}
+
+#[test]
+pub fn shade_intersection() {
+  let w = World::default();
+  let ray = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
+  let shape = &w.shapes[0];
+  let i = Intersection::new(shape, 4.0);
+  let comps = Ray::precompute(&i, &ray);
+
+  let c = World::shade_hit(&w, &comps);
+  assert_eq!(c, Color::new(0.38066, 0.47583, 0.3806)); // TODO: the b component is not the same as in book. page 95
+}
+
+
+#[test]
+pub fn shade_intersection_from_inside() {
+  let mut w = World::default();
+  w.lights = vec![PointLight::new(&Tuple::point(0., 0.25, 0.), &Color::new(1., 1., 1.))];
+  let ray = Ray::new(&Tuple::point(0., 0., 0.), &Tuple::vector(0., 0., 1.));
+  let shape = &w.shapes[1];
+  let i = Intersection::new(shape, 0.5);
+  let comps = Ray::precompute(&i, &ray);
+
+  let c = World::shade_hit(&w, &comps);
+  assert_eq!(c, Color::new(0.90498, 0.90498, 0.90498));
+}
+
+#[test]
+pub fn color_when_ray_misses() {
+  let w = World::default();
+  let ray = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 1., 0.));
+
+  let c = w.color_at(&ray);
+  assert_eq!(c, Color::new(0., 0., 0.));
+}
+
+#[test]
+pub fn color_when_ray_hits() {
+  let w = World::default();
+  let ray = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
+
+  let c = w.color_at(&ray);
+  assert_eq!(c, Color::new(0.38066, 0.47583, 0.3806));
+}
+
+#[test]
+pub fn color_with_intersection_behind_ray() {
+  let w = World::default_world_with_ambient_materials(1.0);
+  let inner = &w.shapes[1];
+
+  let ray = Ray::new(&Tuple::point(0., 0., 0.75), 
+                &Tuple::vector(0., 0., -1.));
+
+  let c = w.color_at(&ray);
+  let m_inner= inner.get_material();
+  assert_eq!(c, m_inner.color);
+}
+
+// Camera
+
+#[test]
+pub fn transform_matrix_default_orientation() {
+  let from = Tuple::point(0., 0., 0.);
+  let to = Tuple::point(0., 0., -1.);
+  let up = Tuple::vector(0., 1., 0.,);
+
+  let t = Camera::view_transform(&from, &to, &up);
+
+  assert_eq!(&Matrix::new_identity_matrix(4), &t);
+}
+
+
+#[test]
+pub fn transform_matrix_positive_z_direction() {
+  let from = Tuple::point(0., 0., 0.);
+  let to = Tuple::point(0., 0., 1.);
+  let up = Tuple::vector(0., 1., 0.,);
+
+  let t = Camera::view_transform(&from, &to, &up);
+
+  assert_eq!(&Matrix::scale(-1., 1., -1.), &t);
+}
+
+
+#[test]
+pub fn view_transform_moves_he_world() {
+  let from = Tuple::point(0., 0., 8.);
+  let to = Tuple::point(0., 0., 0.);
+  let up = Tuple::vector(0., 1., 0.,);
+
+  let t = Camera::view_transform(&from, &to, &up);
+
+  assert_eq!(&Matrix::translation(0., 0., -8.), &t);
+}
+
+
+#[test]
+pub fn transform_matrix_arbitrary() {
+  let from = Tuple::point(1., 3., 2.);
+  let to = Tuple::point(4., -2., 8.);
+  let up = Tuple::vector(1., 1., 0.,);
+
+  let t = Camera::view_transform(&from, &to, &up);
+  let m: Matrix = Matrix::new(&[
+    &[-0.50709, 0.50709, 0.67612, -2.36643],
+    &[0.76772, 0.60609, 0.12122, -2.82843],
+    &[-0.35857, 0.59761, -0.71714, 0.00000],
+    &[0.00000, 0.00000, 0.00000, 1.00000],
+]);
+  assert_eq!(&m, &t);
+}
+
+#[test]
+pub fn construct_camera() {
+  let hsize = 160;
+  let vsize = 120;
+  let field_of_view = consts::PI / 2.;
+
+  let c = Camera::new(hsize, vsize, field_of_view);
+
+  assert_eq!(c.hsize, hsize);
+  assert_eq!(c.vsize, vsize);
+  assert!(util::equal(c.field_of_view, consts::PI / 2.));
+  assert_eq!(&c.transform, &Matrix::new_identity_matrix(4));
+}
+
+#[test]
+pub fn pixel_size_horizontal_canvas() {
+  let c = Camera::new(200, 125, consts::PI / 2.);
+
+  assert!(util::equal(c.pixel_size, 0.01));
+}
+
+#[test]
+pub fn pixel_size_vertical_canvas() {
+  let c = Camera::new(125, 200, consts::PI / 2.);
+
+  assert!(util::equal(c.pixel_size, 0.01));
+}
+
+#[test]
+pub fn construct_ray_through_center_of_canvas() {
+  let c = Camera::new(201, 101, consts::PI /2.);
+
+  let r = c.ray_for_pixel(100, 50);
+  assert_eq!(&r.origin, &Tuple::point(0., 0., 0.));
+  assert_eq!(&r.direction, &Tuple::vector(0., 0., -1.));
+}
+
+#[test]
+pub fn construct_ray_through_corner_of_canvas() {
+  let c = Camera::new(201, 101, consts::PI /2.);
+
+  let r = c.ray_for_pixel(0, 0);
+  assert_eq!(&r.origin, &Tuple::point(0., 0., 0.));
+  assert_eq!(&r.direction, &Tuple::vector(0.66519, 0.33259, -0.66851));
+}
+
+#[test]
+pub fn construct_ray_when_camera_is_transformed() {
+  let mut c = Camera::new(201, 101, consts::PI /2.);
+  c.transform = Matrix::rotation_y(consts::PI/4.) * Matrix::translation(0., -2., 5.);
+  let r = c.ray_for_pixel(100, 50);
+  assert_eq!(&r.origin, &Tuple::point(0., 2., -5.));
+  assert_eq!(&r.direction, &Tuple::vector((2.0 as f64).sqrt() / 2., 0.0, -(2.0 as f64).sqrt()  / 2.));
+}
+
+#[test]
+pub fn render_world_with_camera() {
+  let w = World::default();
+  let mut c = Camera::new(11, 11, consts::FRAC_PI_2);
+  let from = Tuple::point(0., 0., -5.);
+  let to = Tuple::point(0., 0., 0.);
+  let up = Tuple::vector(0., 1., 0.);
+  c.transform = Camera::view_transform(&from, &to, &up);
+
+  let canvas = c.render(&w);
+  
+  let cc = canvas.pixel_at(5,5);
+  assert_eq!(cc, &Color::new(0.38066, 0.47583, 0.2855))
 }

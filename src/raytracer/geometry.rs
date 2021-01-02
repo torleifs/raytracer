@@ -11,7 +11,6 @@ pub trait Shape: fmt::Debug {
   fn get_transform(&self) -> math::Matrix;
   fn get_material(&self) -> Material; 
   fn normal_at(&self, p: &math::Tuple) -> math::Tuple;
-
   fn box_clone(&self) -> Box<dyn Shape>;
 }
 
@@ -62,7 +61,7 @@ impl Shape for Sphere {
     world_normal.w = 0.;
     world_normal.normalize()
   }
-  
+
   fn box_clone(&self) -> Box<dyn Shape> {
     Box::new((*self).clone())
 }
