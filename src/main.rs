@@ -1,46 +1,69 @@
+use crate::raytracer::Camera;
 use std::{rc::Rc};
+use std::f64::consts;
 mod canvas;
 mod color;
 mod math;
 mod raytracer;
 mod util;
 use color::Color;
-use raytracer::{Material, PointLight, Ray};
+use raytracer::{Material, PointLight, Ray, World};
 use raytracer::Sphere;
 use math::Tuple;
 use math::Matrix;
 use crate::raytracer::geometry::Shape;
 fn main() {
-  let mut c = canvas::Canvas::new(100, 100);
+  let mut floor = Sphere::new();
+  floor.transform = Matrix::scale(10., 0.01, 10.0);
+  floor.material = Material::new();
+  floor.material.color = Color::new(1., 0.9, 0.9);
+  floor.material.specular = 0.;
 
-  let mut sphere = Sphere::new();
-  sphere.material = Material::new();
-  sphere.material.color = Color::new(1., 0.2, 0.2);
-  sphere.transform = Matrix::translation(0., 0., 4.0);
-  let boxed_sphere:Rc<dyn Shape> = Rc::new(sphere);
-  let light = PointLight::new(&Tuple::point(-10., 10., -10.), &Color::new(1., 1., 1.));
+  let mut left_wall = Sphere::new();
+  left_wall.transform = Matrix::translation(0., 0., 5.) *
+                        Matrix::rotation_y(-consts::FRAC_PI_4) * 
+                        Matrix::rotation_x(consts::FRAC_PI_2) *
+                        Matrix::scale(10., 0.01, 10.0);
+  left_wall.material = floor.material.clone();
 
-  let ray_origin = Tuple::point(0., 0., -5.);
-  let wall_size = 7.0;
-  let pixel_size: f64 = wall_size / 100.;
+  let mut right_wall = Sphere::new();
+  right_wall.transform = Matrix::translation(0., 0., 5.) *
+                        Matrix::rotation_y(consts::FRAC_PI_4) * 
+                        Matrix::rotation_x(consts::FRAC_PI_2) *
+                        Matrix::scale(10., 0.01, 10.0);
+  right_wall.material = left_wall.material.clone();
 
-  for x in -49..50 {
-    let world_x = pixel_size * (x as f64);
-    for y in -49..50 {
-      let world_y = pixel_size * (y as f64);
-      let position = Tuple::point(world_x, world_y, 10.);
-      let ray_unit_vector = (position - &ray_origin).normalize();
-      let r = Ray::new(&Tuple::point(0., 0., -5.), &ray_unit_vector);
-      let xs = Ray::intersects(&boxed_sphere, &r);
-      if xs.len() > 0 {
-        let point = Ray::position(&r, xs[0].t);
-        let normal = boxed_sphere.normal_at(&point);
-        let eye_vector = -r.direction;
-        let color = Material::lighting(&boxed_sphere.get_material(), &light, &point, &eye_vector, &normal);
-        c.write_pixel(x, y, color.clone());
-      }
-    }
-  }
+  let mut middle = Sphere::new();
+  middle.transform = Matrix::translation(-0.5, 1., 0.5);
+  middle.material = Material:: new();
+  middle.material.color = Color::new(0.1, 1., 0.5);
+  middle.material.diffuse = 0.7;
+  middle.material.specular = 0.3;
+
+  let mut right = Sphere::new();
+  right.transform = Matrix::translation(1.5, 0.5, - 0.5) *
+                    Matrix::scale(0.5, 0.5, 0.5);
+  right.material = Material::new();
+  right.material.color = Color::new(0.5, 1.0, 0.1);
+  right.material.diffuse = 0.7;
+  right.material.specular = 0.3;
+
+  let mut left = Sphere::new();
+  left.transform = Matrix::translation(-1.5, 0.33, -0.75) * 
+                    Matrix::scale(0.33, 0.33, 0.33);
+  left.material = Material::new();
+  left.material.color = Color::new(1.0, 0.8, 0.1);
+  left.material.diffuse = 0.7;
+  left.material.specular = 0.3;
+
+  let mut w = World::new();
+  w.shapes = vec![Rc::new(floor), Rc::new(left_wall), Rc::new(right_wall), Rc::new(middle), Rc::new(left), Rc::new(right)];
+  w.lights = vec![PointLight::new(&Tuple::point(-10., 10., -10.), &Color::new(1., 1., 1.))];
+
+  let mut camera = Camera::new(1000, 500, consts::FRAC_PI_3);
+  camera.transform = Camera::view_transform(&Tuple::point(0., 1.5, -5.), &Tuple::point(0., 1., 0.), &Tuple::vector(0., 1., 0.));
+  let c = camera.render(&w);
+
   let ppm = c.to_ppm();
   canvas::Canvas::write_ppm_to_disk(
     &"/Users/torleifs/code/rust/raytracer/test.ppm".to_string(),

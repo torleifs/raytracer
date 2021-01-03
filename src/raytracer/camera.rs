@@ -60,12 +60,14 @@ impl Camera {
   }
 
   pub fn render(&self, world: &World) -> Canvas {
-    let mut canvas = Canvas::new(self.hsize as i32, self.vsize as i32);
-    for x in 0..self.vsize {
-      for y in 0..self.hsize {
+    
+    let mut canvas = Canvas::new(self.hsize, self.vsize);
+    for x in 0..self.hsize {
+      for y in 0..self.vsize {
         let ray = self.ray_for_pixel(x, y);
         let color = world.color_at(&ray);
-        canvas.write_pixel(x as i32, y as i32, color)
+       
+        canvas.write_pixel(x, y, &color);
       }
     }
     
