@@ -25,11 +25,14 @@ impl Material {
    }
   } 
   
-  pub fn lighting(material: &Material, light: &PointLight, point: &Tuple, eye_v: &Tuple, normal_v: &Tuple) -> Color{
+  pub fn lighting(material: &Material, light: &PointLight, point: &Tuple, eye_v: &Tuple, normal_v: &Tuple, in_shadow: bool) -> Color{
     let effective_color = &material.color * &light.intensity;
     let light_vector = (&(light.position) - &point).normalize();
     let ambient = &effective_color *material.ambient;
 
+    if in_shadow {
+      return ambient;
+    }
     let light_dot_normal = Tuple::dot(&light_vector, &normal_v);
     let mut diffuse = Color::new(0., 0., 0.);
     let mut specular = Color::new(0., 0., 0.);

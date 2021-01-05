@@ -55,7 +55,13 @@ impl World {
     }
   }
   pub fn shade_hit(&self, comps: &super::rays::PreComputation) -> Color {
-    Material::lighting(&comps.shape.get_material(), &self.lights[0], &comps.point, &comps.eye_vector, &comps.normal_vector)
+    let is_shadow = self.is_shadowed(&comps.over_point);
+    Material::lighting(&comps.shape.get_material(), 
+    &self.lights[0], 
+    &comps.over_point, 
+    &comps.eye_vector, 
+    &comps.normal_vector, 
+    is_shadow)
   }
   pub fn intersect_world(&self, ray: &Ray) -> Vec<Intersection> {
     let mut vec: Vec<Intersection> = Vec::new();
@@ -74,5 +80,25 @@ impl World {
     let i = xs.iter().find(|&i| i.t > 0.).unwrap();
     let comps = Ray::precompute(&i, ray);
     return self.shade_hit(&comps);
+  }
+
+  pub fn is_shadowed(&self, point: &Tuple) -> bool {
+    let light_pos= &self.lights[0].position;
+    let point_to_light= light_pos - point;
+    let distance = point_to_light.magnitude();
+    let point_to_light_normalized = point_to_light.normalize();
+
+    let point_to_light_ray = Ray::new(&point, &point_to_light_normalized);
+    let mut intersections = self.intersect_world(&point_to_light_ray);
+    let h = Intersection::hit(&mut intersections);
+    let t = match h {
+      Some(i) => i.t,
+      None =>  -1.
+    };
+    if t > 0. && t < distance {
+      return true;
+    } else {
+      return false;
+    }
   }
 }

@@ -1,7 +1,7 @@
 use crate::raytracer::geometry::Shape;
-use super::World;
 use crate::math::Tuple;
 use crate::math::Matrix;
+use crate::util;
 use std::rc::Rc;
 pub struct Ray {
   pub origin: Tuple,
@@ -77,6 +77,7 @@ impl Ray {
       t: i.t,
       shape: i.shape.clone(),
       point: pos.clone(),
+      over_point: pos + &(&normal_vector * util::EPSILON),
       eye_vector,
       normal_vector,
       inside,
@@ -87,6 +88,7 @@ pub struct PreComputation {
   pub t: f64,
   pub shape: Rc<dyn Shape>, 
   pub point: Tuple,
+  pub over_point: Tuple,
   pub eye_vector: Tuple,
   pub normal_vector: Tuple,
   pub inside: bool
@@ -101,10 +103,10 @@ impl Intersection {
   pub fn new(shape: &Rc<dyn Shape>, t: f64) -> Intersection {
     Intersection { shape: Rc::clone(&shape), t }
   }
-  pub fn intersections<'a>(the_intersections: &[&'a Intersection]) -> Vec<&'a Intersection> {
+  pub fn intersections(the_intersections: &[Intersection]) -> Vec<Intersection> {
     the_intersections.to_vec()
   }
-  pub fn hit(intersections: &mut Vec<&Intersection>) -> Option<Intersection> {
+  pub fn hit(intersections: &mut Vec<Intersection>) -> Option<Intersection> {
     intersections.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
     for intersection in intersections.iter() {
       if intersection.t > 0. {

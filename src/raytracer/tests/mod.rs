@@ -89,7 +89,7 @@ fn aggregate_intersections() {
   let s:Rc<dyn Shape> = Rc::new(Sphere::new());
   let i1 = Intersection::new(&s, 1.);
   let i2 = Intersection::new(&s, 2.);
-  let xs = Intersection::intersections(&[&i1, &i2]);
+  let xs = Intersection::intersections(&[i1, i2]);
   assert_eq!(xs.len(), 2);
   assert_eq!(xs[0].shape.get_id(), s.get_id());
   assert_eq!(xs[1].shape.get_id(), s.get_id());
@@ -116,7 +116,7 @@ fn the_hit_when_all_intersections_have_positive_t() {
     t: 2.,
     shape: Rc::clone(&s),
   };
-  let i = match Intersection::hit(&mut Intersection::intersections(&[&i1, &i2])) {
+  let i = match Intersection::hit(&mut Intersection::intersections(&[i1.clone(), i2])) {
     Some(an_i) => an_i,
     None => panic!(),
   };
@@ -134,7 +134,7 @@ fn the_hit_when_domr_intersections_have_negative_t() {
     t: 2.,
     shape:  Rc::clone(&s),
   };
-  let i = match Intersection::hit(&mut Intersection::intersections(&[&i1, &i2])) {
+  let i = match Intersection::hit(&mut Intersection::intersections(&[i1, i2.clone()])) {
     Some(an_i) => an_i,
     None => panic!(),
   };
@@ -153,7 +153,7 @@ fn the_hit_when_all_intersections_have_negative_t() {
     t: -1.,
     shape:  Rc::clone(&s),
   };
-  match Intersection::hit(&mut Intersection::intersections(&[&i1, &i2])) {
+  match Intersection::hit(&mut Intersection::intersections(&[i1, i2])) {
     Some(an_i) => an_i,
     None => panic!(),
   };
@@ -178,7 +178,7 @@ fn the_hit_is_the_lowest_nonnegative_intersection() {
     t: 2.,
     shape: Rc::clone(&s),
   };
-  let i = match Intersection::hit(&mut Intersection::intersections(&[&i1, &i2, &i3, &i4])) {
+  let i = match Intersection::hit(&mut Intersection::intersections(&[i1, i2, i3, i4.clone()])) {
     Some(an_i) => an_i,
     None => panic!(),
   };
@@ -355,7 +355,7 @@ pub fn lighting_with_eye_between_light_and_surface() {
   let normal_vector = Tuple::vector(0., 0.,-1.);
   let light = PointLight::new(&Tuple::point(0., 0., -10.), &Color::new(1., 1., 1.));
   
-  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector);
+  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector, false);
   assert_eq!(&Color::new(1.9, 1.9, 1.9), &result);
 }
 #[test]
@@ -366,7 +366,7 @@ pub fn lighting_with_eye_between_light_and_surface_eye_offset_45() {
   let normal_vector = Tuple::vector(0., 0.,-1.);
   let light = PointLight::new(&Tuple::point(0., 0., -10.), &Color::new(1., 1., 1.));
   
-  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector);
+  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector, false);
   assert_eq!(&Color::new(1.0, 1.0, 1.0), &result);
 }
 #[test]
@@ -377,7 +377,7 @@ pub fn lighting_with_eye_opposite_surface_light_offset_45() {
   let normal_vector = Tuple::vector(0., 0.,-1.);
   let light = PointLight::new(&Tuple::point(0., 10., -10.), &Color::new(1., 1., 1.));
   
-  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector);
+  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector, false);
   assert_eq!(&Color::new(0.7364, 0.7364, 0.7364), &result);
 }
 #[test]
@@ -388,7 +388,7 @@ pub fn lighting_with_eye_in_path_of_reflection_vector() {
   let normal_vector = Tuple::vector(0., 0.,-1.);
   let light = PointLight::new(&Tuple::point(0., 10., -10.), &Color::new(1., 1., 1.));
   
-  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector);
+  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector, false);
   assert_eq!(&Color::new(1.6364, 1.6364, 1.6364), &result);
 }
 
@@ -400,7 +400,7 @@ pub fn lighting_with_light_behind_surface() {
   let normal_vector = Tuple::vector(0., 0.,-1.);
   let light = PointLight::new(&Tuple::point(0., 0., 10.), &Color::new(1., 1., 1.));
   
-  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector);
+  let result = Material::lighting(&m, &light, &position, &eye_vector, &normal_vector, false);
   assert_eq!(&Color::new(0.1, 0.1, 0.1), &result);
 }
 
@@ -502,6 +502,24 @@ pub fn shade_intersection_from_inside() {
 
   let c = World::shade_hit(&w, &comps);
   assert_eq!(c, Color::new(0.90498, 0.90498, 0.90498));
+}
+
+#[test]
+pub fn shade_intersection_in_shadow() {
+  let mut w = World::new();
+  w.lights = vec![PointLight::new(&Tuple::point(0., 0., -10.), &Color::new(1., 1., 1.))];
+  let s1 = Sphere::new();
+  let mut s2 = Sphere::new();
+  s2.transform = Matrix::translation(0., 0., 10.);
+  w.shapes = vec![Rc::new(s1), Rc::new(s2)];
+
+  let ray = Ray::new(&Tuple::point(0., 0., 5.), &Tuple::vector(0., 0., 1.));
+  //let shape = &w.shapes[1];
+  let i = Intersection::new(&w.shapes[1], 4.0);
+  let comps = Ray::precompute(&i, &ray);
+
+  let c = World::shade_hit(&w, &comps);
+  assert_eq!(c, Color::new(0.1, 0.1, 0.1));
 }
 
 #[test]
@@ -657,4 +675,62 @@ pub fn render_world_with_camera() {
   
   let cc = canvas.pixel_at(5,5);
   assert_eq!(cc, &Color::new(0.38066, 0.47583, 0.2855))
+}
+
+#[test]
+pub fn light_surface_in_shadow() {
+  let eye_vec = Tuple::vector(0., 0., -1.);
+  let normal_vec = Tuple::vector(0., 0., -1.);
+
+  let light = PointLight::new(&Tuple::point(0., 0., -10.), &Color::new(1., 1., 1.));
+  let in_shadow = true;
+  let m = Material::new();
+  let pos = Tuple::point(0., 0., 0.);
+  let result = Material::lighting(&m, &light, &pos, &eye_vec, &normal_vec, in_shadow);
+  assert_eq!(&result, &Color::new(0.1, 0.1, 0.1));
+}
+
+#[test]
+pub fn no_shadow_when_nothing_is_collinear_with_point_and_light() {
+  let w = World::default();
+  let p = Tuple::point(0., 10.0, 0.);
+
+  assert!(!w.is_shadowed(&p));
+}
+
+#[test]
+pub fn shadow_when_object_is_between_point_and_light() {
+  let w = World::default();
+  let p = Tuple::point(10., -10.0, 10.);
+
+  assert!(w.is_shadowed(&p));
+}
+
+#[test]
+pub fn no_shadow_when_object_behind_light() {
+  let w = World::default();
+  let p = Tuple::point(-20., 20.0, -20.);
+
+  assert!(!w.is_shadowed(&p));
+}
+
+#[test]
+pub fn no_shadow_when_object_behind_point() {
+  let w = World::default();
+  let p = Tuple::point(-2., 2.0, -2.);
+
+  assert!(!w.is_shadowed(&p));
+}
+
+#[test]
+pub fn hit_should_offset_point() {
+  let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
+  let mut s = Sphere::new();
+  s.transform = Matrix::translation(0., 0., 1.);
+  let s_s :Rc<dyn Shape> = Rc::new(s);
+  
+  let i = Intersection::new(&s_s, 5.0);
+  let comps = Ray::precompute(&i, &r);
+  assert!(comps.over_point.z < - util::EPSILON / 2.);
+  assert!(comps.point.z > comps.over_point.z);
 }
