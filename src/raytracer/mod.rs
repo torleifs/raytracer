@@ -5,6 +5,7 @@ pub mod materials;
 pub mod world;
 pub mod camera;
 pub use self::geometry::Sphere;
+pub use self::geometry::Plane;
 pub use self::rays::Intersection;
 pub use self::rays::Ray;
 pub use self::lights::PointLight;

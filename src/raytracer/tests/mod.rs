@@ -1,10 +1,12 @@
 use std::{f64::consts, rc::Rc};
-
+use std::cell::RefCell;
 use super::Intersection;
 use super::Ray;
 use super::Sphere;
+
 use super::World;
 use super::Camera;
+use super::geometry::normal_at;
 use super::lights::PointLight;
 use super::materials::Material;
 use crate::math::Matrix;
@@ -12,6 +14,9 @@ use crate::math::Tuple;
 use crate::util;
 use crate::color::Color;
 use crate::raytracer::geometry::Shape;
+use crate::raytracer::geometry::TestShape;
+use crate::raytracer::geometry::Plane;
+
 #[test]
 fn create_query_ray() {
   let origin = Tuple::point(1., 2., 3.);
@@ -35,7 +40,7 @@ fn computing_point_from_distance() {
 fn ray_intersects_sphere_at_two_points() {
   let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
   let s:Rc<dyn Shape> = Rc::new(Sphere::new());
-  let xs = Ray::intersects(&s, &r);
+  let xs = s.intersect(&r);
   assert_eq!(xs.len(), 2);
   assert!(util::equal(xs[0].t, 4.0));
   assert!(util::equal(xs[1].t, 6.0))
@@ -44,7 +49,7 @@ fn ray_intersects_sphere_at_two_points() {
 fn ray_intersects_sphere_at_tangent() {
   let r = Ray::new(&Tuple::point(0., 1., -5.), &Tuple::vector(0., 0., 1.));
   let s:Rc<dyn Shape> = Rc::new(Sphere::new());
-  let xs = Ray::intersects(&s, &r);
+  let xs = s.intersect(&r);
   assert_eq!(xs.len(), 2);
   // return two points even if tangential!
   assert!(util::equal(xs[0].t, 5.0));
@@ -55,7 +60,7 @@ fn ray_intersects_sphere_at_tangent() {
 fn ray_misses_sphere() {
   let r = Ray::new(&Tuple::point(0., 2., -5.), &Tuple::vector(0., 0., 1.));
   let s:Rc<dyn Shape> = Rc::new(Sphere::new());
-  let xs = Ray::intersects(&s, &r);
+  let xs = s.intersect(&r);
   assert_eq!(xs.len(), 0);
 }
 
@@ -63,7 +68,7 @@ fn ray_misses_sphere() {
 fn ray_originates_within_sphere() {
   let r = Ray::new(&Tuple::point(0., 0., 0.), &Tuple::vector(0., 0., 1.));
   let s:Rc<dyn Shape> = Rc::new(Sphere::new());
-  let xs = Ray::intersects(&s, &r);
+  let xs = s.intersect(&r);
   assert!(util::equal(xs[0].t, -1.0));
   assert!(util::equal(xs[1].t, 1.0))
 }
@@ -72,7 +77,7 @@ fn ray_originates_within_sphere() {
 fn sphere_is_behind_ray() {
   let r = Ray::new(&Tuple::point(0., 0., 5.), &Tuple::vector(0., 0., 1.));
   let s:Rc<dyn Shape> = Rc::new(Sphere::new());
-  let xs = Ray::intersects(&s, &r);
+  let xs = s.intersect(&r);
   assert!(util::equal(xs[0].t, -6.0));
   assert!(util::equal(xs[1].t, -4.0))
 }
@@ -99,7 +104,7 @@ fn aggregate_intersections() {
 fn intersect_sets_intersected_object() {
   let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
   let s:Rc<dyn Shape> = Rc::new(Sphere::new());
-  let xs = Ray::intersects(&s, &r);
+  let xs = s.intersect(&r);
 
   assert_eq!(xs[0].shape.get_id(), s.get_id());
   assert_eq!(xs[1].shape.get_id(), s.get_id());
@@ -207,25 +212,25 @@ pub fn scale_ray() {
 #[test]
 pub fn sphere_default_transform() {
   let s = Sphere::new();
-  assert_eq!(s.transform, Matrix::new_identity_matrix(4))
+  assert_eq!(s.transform.into_inner(), Matrix::new_identity_matrix(4))
 }
 
 #[test]
 pub fn change_sphere_transform() {
   let mut s = Sphere::new();
   let t = Matrix::translation(2., 3., 4.);
-  s.transform = t.clone();
+  s.transform = RefCell::new(t.clone());
 
-  assert_eq!(s.transform, t);
+  assert_eq!(s.transform.into_inner(), t);
 }
 // TODO: consider change ray arguments to two tuples (Rust type)
 #[test]
 pub fn intersect_scaled_sphere_with_ray() {
   let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
   let mut s = Sphere::new();
-  s.transform = Matrix::scale(2., 2., 2.);
+  s.transform = RefCell::new(Matrix::scale(2., 2., 2.));
   let s:Rc<dyn Shape> = Rc::new(s);
-  let xs = Ray::intersects(&s, &r);
+  let xs = s.intersect(&r);
   assert_eq!(xs.len(), 2);
   assert!(util::equal(xs[0].t, 3.0));
   assert!(util::equal(xs[1].t, 7.0))
@@ -234,37 +239,37 @@ pub fn intersect_scaled_sphere_with_ray() {
 pub fn intersect_translated_sphere_with_ray() {
   let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
   let mut s = Sphere::new();
-  s.transform = Matrix::translation(5., 0., 0.);
+  s.transform = RefCell::new(Matrix::translation(5., 0., 0.));
   let s:Rc<dyn Shape> = Rc::new(s);
-  let xs = Ray::intersects(&s, &r);
+  let xs = s.intersect(&r);
   assert_eq!(xs.len(), 0);
 }
 
 #[test]
 pub fn normal_of_sphere_on_x_axis_point() {
   let s = Sphere::new();
-  let n = s.normal_at(&Tuple::point(1., 0., 0.));
+  let n = s.local_normal_at(&Tuple::point(1., 0., 0.));
   assert_eq!(n, Tuple::vector(1., 0., 0.));
 }
 
 #[test]
 pub fn normal_of_sphere_on_y_axis_point() {
   let s = Sphere::new();
-  let n = s.normal_at(&Tuple::point(0., 1., 0.));
+  let n = s.local_normal_at(&Tuple::point(0., 1., 0.));
   assert_eq!(n, Tuple::vector(0., 1., 0.));
 }
 
 #[test]
 pub fn normal_of_sphere_on_z_axis_point() {
   let s = Sphere::new();
-  let n = s.normal_at(&Tuple::point(0., 0., 1.));
+  let n = s.local_normal_at(&Tuple::point(0., 0., 1.));
   assert_eq!(n, Tuple::vector(0., 0., 1.));
 }
 
 #[test]
 pub fn normal_of_sphere_on_non_axial_point() {
   let s = Sphere::new();
-  let n = s.normal_at(&Tuple::point(
+  let n = s.local_normal_at(&Tuple::point(
     (3. as f64).sqrt() / 3.,
     (3. as f64).sqrt() / 3.,
     (3. as f64).sqrt() / 3.,
@@ -282,7 +287,7 @@ pub fn normal_of_sphere_on_non_axial_point() {
 #[test]
 pub fn normal_is_normalized() {
   let s = Sphere::new();
-  let n = s.normal_at(&Tuple::point(
+  let n = s.local_normal_at(&Tuple::point(
     (3. as f64).sqrt() / 3.,
     (3. as f64).sqrt() / 3.,
     (3. as f64).sqrt() / 3.,
@@ -295,16 +300,16 @@ pub fn normal_is_normalized() {
 #[test]
 pub fn compute_normal_on_translated_sphere() {
   let mut s = Sphere::new();
-  s.transform = Matrix::translation(0., 1., 0.);
-  let n = s.normal_at(&Tuple::point(0., 1.70711, -0.70711));
+  s.transform = RefCell::new(Matrix::translation(0., 1., 0.));
+  let n = normal_at(Rc::new(s), &Tuple::point(0., 1.70711, -0.70711));
   assert_eq!(n, Tuple::vector(0., 0.70711, -0.70711));
 }
 
 #[test]
 pub fn compute_normal_on_transformed_sphere() {
   let mut s = Sphere::new();
-  s.transform = Matrix::scale(1., 0.5, 1.) * Matrix::rotation_z(consts::PI / 5.);
-  let n = s.normal_at(&Tuple::point(0., (2. as f64).sqrt() / 2., -(2. as f64).sqrt() / 2.));
+  s.transform = RefCell::new(Matrix::scale(1., 0.5, 1.) * Matrix::rotation_z(consts::PI / 5.));
+  let n = normal_at(Rc::new(s), &Tuple::point(0., (2. as f64).sqrt() / 2., -(2. as f64).sqrt() / 2.));
   assert_eq!(n, Tuple::vector(0., 0.97014, -0.24254));
 }
 
@@ -333,7 +338,7 @@ pub fn default_material() {
 #[test]
 pub fn sphere_has_default_material() {
   let s = Sphere::new();
-  assert_eq!(s.material, Material::new());
+  assert_eq!(s.material.into_inner(), Material::new());
 }
 
 
@@ -342,8 +347,8 @@ pub fn sphere_can_be_assigned_material() {
   let mut s = Sphere::new();
   let mut m = Material::new();
   m.ambient = 1.;
-  s.material = m.clone();
-  assert_eq!(&s.material, &m);
+  s.material = RefCell::new(m.clone());
+  assert_eq!(s.material.into_inner(), m);
 }
 
 /// Light source
@@ -421,12 +426,14 @@ fn are_shapes_equivalent(s1: &Rc<dyn Shape>, s2: &Rc<dyn Shape>) -> bool {
 pub fn default_world() {
   let light = PointLight::new(&Tuple::point(-10., 10., -10.), &Color::new(1., 1., 1.));
   let mut s1 = Sphere::new();
-  s1.material.color = Color::new(0.8, 1.0, 0.8);
-  s1.material.diffuse = 0.7;
-  s1.material.specular = 0.2;
+  let mut mat = Material::new();
+  mat.color = Color::new(0.8, 1.0, 0.8);
+  mat.diffuse = 0.7;
+  mat.specular = 0.2;
+  s1.material = RefCell::new(mat);
   let s1:Rc<dyn Shape> = Rc::new(s1);
   let mut s2 = Sphere::new();
-  s2.transform = Matrix::scale(0.5, 0.5, 0.5);
+  s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
   let s2:Rc<dyn Shape> = Rc::new(s2);
   let w = World::default();
   assert_eq!(w.lights, vec![light]);
@@ -510,7 +517,7 @@ pub fn shade_intersection_in_shadow() {
   w.lights = vec![PointLight::new(&Tuple::point(0., 0., -10.), &Color::new(1., 1., 1.))];
   let s1 = Sphere::new();
   let mut s2 = Sphere::new();
-  s2.transform = Matrix::translation(0., 0., 10.);
+  s2.transform = RefCell::new(Matrix::translation(0., 0., 10.));
   w.shapes = vec![Rc::new(s1), Rc::new(s2)];
 
   let ray = Ray::new(&Tuple::point(0., 0., 5.), &Tuple::vector(0., 0., 1.));
@@ -726,11 +733,135 @@ pub fn no_shadow_when_object_behind_point() {
 pub fn hit_should_offset_point() {
   let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
   let mut s = Sphere::new();
-  s.transform = Matrix::translation(0., 0., 1.);
+  s.transform = RefCell::new(Matrix::translation(0., 0., 1.));
   let s_s :Rc<dyn Shape> = Rc::new(s);
   
   let i = Intersection::new(&s_s, 5.0);
   let comps = Ray::precompute(&i, &r);
   assert!(comps.over_point.z < - util::EPSILON / 2.);
   assert!(comps.point.z > comps.over_point.z);
+}
+
+#[test]
+pub fn shape_default_transformation() {
+  let s = TestShape::new();
+  assert_eq!(s.get_transform(), Matrix::new_identity_matrix(4));
+}
+
+#[test]
+pub fn shape_assign_transformation() {
+  let s = TestShape::new();
+  s.set_transform(Matrix::translation(2., 3., 4.));
+  assert_eq!(s.get_transform(), Matrix::translation(2., 3., 4.));
+}
+
+#[test]
+pub fn shape_default_material() {
+  let s = TestShape::new();
+  let m = s.get_material();
+  assert_eq!(m, Material::new());
+}
+
+#[test]
+pub fn shape_assign_material() {
+  let s = TestShape::new();
+  let mut m = Material::new();
+  m.ambient = 1.0;
+  s.set_material(m.clone());
+  assert_eq!(s.get_material(), m);
+}
+
+#[test]
+pub fn intersect_scaled_shape_with_ray() {
+  let r = Ray::new(&Tuple::point(0.0, 0.0, -5.0), &Tuple::vector(0.0, 0.0, 1.0));
+  let s = TestShape::new();
+  s.set_transform(Matrix::scale(2.0, 2.0, 2.0));
+  let _ = s.intersect(&r);
+
+  assert_eq!(s.get_saved_ray().origin, Tuple::point(0., 0., -2.5));
+  assert_eq!(s.get_saved_ray().direction, Tuple::vector(0., 0., 0.5));
+}
+
+#[test]
+pub fn intersect_transformed_shape_with_ray() {
+  let r = Ray::new(&Tuple::point(0.0, 0.0, -5.0), &Tuple::vector(0.0, 0.0, 1.0));
+  let s = TestShape::new();
+  s.set_transform(Matrix::translation(5.0, 0.0, 0.0));
+  let _ = s.intersect(&r);
+
+  assert_eq!(s.get_saved_ray().origin, Tuple::point(-5.0, 0., -5.0));
+  assert_eq!(s.get_saved_ray().direction, Tuple::vector(0., 0., 1.0));
+}
+
+#[test]
+pub fn compute_normal_translated_shape() {
+  let s = TestShape::new();
+  s.set_transform(Matrix::translation(0.0, 1.0, 0.0));
+  let n = normal_at(Rc::new(s), &Tuple::point(0.0, 1.70711, -0.70711));
+
+  assert_eq!(n, Tuple::vector(0.0, 0.70711, -0.70711));
+}
+
+#[test]
+pub fn compute_normal_transformed_shape() {
+  let s = TestShape::new();
+  let m = Matrix::scale(1.0, 0.5, 1.0) * Matrix::rotation_z(consts::PI / 5.0);
+  s.set_transform(m);
+  let n = normal_at(Rc::new(s), &Tuple::point(0.0, (2.0 as f64).sqrt() / 2.0, -(2.0 as f64).sqrt() / 2.0));
+
+  assert_eq!(n, Tuple::vector(0.0, 0.97014, -0.24254));
+}
+
+#[test]
+pub fn normal_of_plane_is_constant() {
+  let p = Plane::new();
+  let n1 = p.local_normal_at(&Tuple::point(0.0, 0.0, 0.0));
+  let n2 = p.local_normal_at(&Tuple::point(10.0, 0.0, -10.0));
+  let n3 = p.local_normal_at(&Tuple::point(-5.0, 0.0, 150.0));
+  
+  assert_eq!(n1, Tuple::vector(0.0, 1.0, 0.0));
+  assert_eq!(n2, Tuple::vector(0.0, 1.0, 0.0));
+  assert_eq!(n3, Tuple::vector(0.0, 1.0, 0.0));
+}
+
+#[test]
+pub fn intersect_with_ray_parallel_to_plane() {
+  let p = Plane::new();
+  let r = Ray::new(&Tuple::point(0.0, 10.0, 0.0), &Tuple::vector(0.0, 0.0, 1.0));
+  let xs = p.intersect(&r);
+
+  assert_eq!(0, xs.len());
+}
+
+#[test]
+pub fn intersect_with_coplanar_ray() {
+  let p = Plane::new();
+  let r = Ray::new(&Tuple::point(0.0, 0.0, 0.0), &Tuple::vector(0.0, 0.0, 1.0));
+  let xs = p.intersect(&r);
+  
+  assert_eq!(0, xs.len());
+}
+
+#[test]
+pub fn ray_intersect_from_above() {
+  let p = Plane::new();
+  let r = Ray::new(&Tuple::point(0.0, 1.0, 0.0), &Tuple::vector(0.0, -1.0, 0.0));
+
+  let xs = p.intersect(&r);
+
+  assert_eq!(xs.len(), 1);
+  assert!(util::equal(xs[0].t, 1.0));
+  assert_eq!(xs[0].shape.get_id(), p.get_id());
+}
+
+#[test]
+pub fn ray_intersect_from_below() {
+  let p = Plane::new();
+  let r = Ray::new(&Tuple::point(0.0, -1.0, 0.0), &Tuple::vector(0.0, 1.0, 0.0));
+
+  let xs = p.intersect(&r);
+
+  assert_eq!(xs.len(), 1);
+  assert!(util::equal(xs[0].t, 1.0));
+  assert_eq!(xs[0].shape.get_id(), p.get_id());
 }

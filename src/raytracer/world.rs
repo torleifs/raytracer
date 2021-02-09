@@ -1,4 +1,5 @@
 
+use core::cell::RefCell;
 use crate::raytracer::Intersection;
 use std::rc::Rc;
 
@@ -27,11 +28,13 @@ impl World {
     let lights = vec![PointLight::new(&Tuple::point(-10., 10., -10.), &Color::new(1., 1., 1.))];
     
     let mut  s1 = Sphere::new();
-    s1.material.color = Color::new(0.8, 1.0, 0.8);
-    s1.material.diffuse = 0.7;
-    s1.material.specular = 0.2;
+    let mut mat = Material::new();
+    mat.color = Color::new(0.8, 1.0, 0.8);
+    mat.diffuse = 0.7;
+    mat.specular = 0.2;
+    s1.material = RefCell::new(mat);
     let mut s2 = Sphere::new();
-    s2.transform = Matrix::scale(0.5, 0.5, 0.5);
+    s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
     
     World {
       shapes: vec![Rc::new(s1), Rc::new(s2)],
@@ -41,14 +44,18 @@ impl World {
   pub fn default_world_with_ambient_materials(ambience: f64) -> World {
     let lights = vec![PointLight::new(&Tuple::point(-10., 10., -10.), &Color::new(1., 1., 1.))];
     
-    let mut  s1 = Sphere::new();
-    s1.material.color = Color::new(0.8, 1.0, 0.8);
-    s1.material.diffuse = 0.7;
-    s1.material.specular = 0.2;
-    s1.material.ambient = ambience;
+    let mut s1 = Sphere::new();
+    let mut mat = Material::new();
+    mat.color = Color::new(0.8, 1.0, 0.8);
+    mat.diffuse = 0.7;
+    mat.specular = 0.2;
+    mat.ambient = ambience;
+    s1.material = RefCell::new(mat);
     let mut s2 = Sphere::new();
-    s2.transform = Matrix::scale(0.5, 0.5, 0.5);
-    s2.material.ambient = ambience;
+    s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
+    mat = Material::new();
+    mat.ambient = ambience;
+    s2.material = RefCell::new(mat);
     World {
       shapes: vec![Rc::new(s1), Rc::new(s2)],
       lights
@@ -57,16 +64,18 @@ impl World {
   pub fn shade_hit(&self, comps: &super::rays::PreComputation) -> Color {
     let is_shadow = self.is_shadowed(&comps.over_point);
     Material::lighting(&comps.shape.get_material(), 
-    &self.lights[0], 
-    &comps.over_point, 
-    &comps.eye_vector, 
-    &comps.normal_vector, 
-    is_shadow)
+      &self.lights[0], 
+      &comps.over_point, 
+      &comps.eye_vector, 
+      &comps.normal_vector, 
+      is_shadow)
   }
   pub fn intersect_world(&self, ray: &Ray) -> Vec<Intersection> {
+    // Traverse all shapes, find intersections for all shapes
+    // return a vector of intersections sorted on low t
     let mut vec: Vec<Intersection> = Vec::new();
     for shape in &self.shapes {
-      let mut intersections = Ray::intersects(&shape, ray);
+      let mut intersections = shape.intersect(ray);
       vec.append(&mut intersections);
     }
     vec.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
@@ -77,17 +86,27 @@ impl World {
     if xs.len() < 1 {
       return Color::new(0., 0., 0.);
     }
-    let i = xs.iter().find(|&i| i.t > 0.).unwrap();
-    let comps = Ray::precompute(&i, ray);
-    return self.shade_hit(&comps);
+    // use the intersection nearest to camera and find color at this point
+    let maybe_t =  xs.iter().find(|&i| i.t > 0.);
+    if let Some(i) = maybe_t {
+      let comps = Ray::precompute(&i, ray);
+      return self.shade_hit(&comps);
+    } else {
+      return Color::new(0.0, 0.0, 0.0);
+    }
   }
 
+  // Determine if a point in 3D space is in shadow:
+  // TODO: only considers the first light source for now.
   pub fn is_shadowed(&self, point: &Tuple) -> bool {
-    let light_pos= &self.lights[0].position;
-    let point_to_light= light_pos - point;
+    let light_pos = &self.lights[0].position;
+    let point_to_light = light_pos - point;
     let distance = point_to_light.magnitude();
     let point_to_light_normalized = point_to_light.normalize();
 
+    // Determine if a point is in shadow by casting a ray *from* the point
+    // *to* the light-source. A point will be in shadow if the ray intersects
+    // at least one object for t E[0, distance>
     let point_to_light_ray = Ray::new(&point, &point_to_light_normalized);
     let mut intersections = self.intersect_world(&point_to_light_ray);
     let h = Intersection::hit(&mut intersections);
