@@ -1,33 +1,32 @@
-
-use core::cell::RefCell;
 use crate::raytracer::Intersection;
+use core::cell::RefCell;
 use std::rc::Rc;
 
 use super::{Material, Ray, Sphere};
 
 use super::PointLight;
-use crate::math::Tuple;
-use crate::math::Matrix;
 use crate::color::Color;
+use crate::math::Matrix;
+use crate::math::Tuple;
 use crate::raytracer::geometry::Shape;
 pub struct World {
   pub shapes: Vec<Rc<dyn Shape>>,
-  pub lights: Vec<PointLight>
+  pub lights: Vec<PointLight>,
 }
 
 impl World {
   pub fn new() -> World {
     let shapes: Vec<Rc<dyn Shape>> = Vec::new();
     let lights: Vec<PointLight> = Vec::new();
-    World {
-      shapes,
-      lights
-    }
+    World { shapes, lights }
   }
   pub fn default() -> World {
-    let lights = vec![PointLight::new(&Tuple::point(-10., 10., -10.), &Color::new(1., 1., 1.))];
-    
-    let mut  s1 = Sphere::new();
+    let lights = vec![PointLight::new(
+      &Tuple::point(-10., 10., -10.),
+      &Color::new(1., 1., 1.),
+    )];
+
+    let mut s1 = Sphere::new();
     let mut mat = Material::new();
     mat.color = Color::new(0.8, 1.0, 0.8);
     mat.diffuse = 0.7;
@@ -35,15 +34,16 @@ impl World {
     s1.material = RefCell::new(mat);
     let mut s2 = Sphere::new();
     s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
-    
     World {
       shapes: vec![Rc::new(s1), Rc::new(s2)],
-      lights
+      lights,
     }
   }
   pub fn default_world_with_ambient_materials(ambience: f64) -> World {
-    let lights = vec![PointLight::new(&Tuple::point(-10., 10., -10.), &Color::new(1., 1., 1.))];
-    
+    let lights = vec![PointLight::new(
+      &Tuple::point(-10., 10., -10.),
+      &Color::new(1., 1., 1.),
+    )];
     let mut s1 = Sphere::new();
     let mut mat = Material::new();
     mat.color = Color::new(0.8, 1.0, 0.8);
@@ -58,17 +58,20 @@ impl World {
     s2.material = RefCell::new(mat);
     World {
       shapes: vec![Rc::new(s1), Rc::new(s2)],
-      lights
+      lights,
     }
   }
   pub fn shade_hit(&self, comps: &super::rays::PreComputation) -> Color {
     let is_shadow = self.is_shadowed(&comps.over_point);
-    Material::lighting(&comps.shape.get_material(), 
-      &self.lights[0], 
-      &comps.over_point, 
-      &comps.eye_vector, 
-      &comps.normal_vector, 
-      is_shadow)
+    Material::lighting(
+      &comps.shape.get_material(),
+      comps.shape.clone(),
+      &self.lights[0],
+      &comps.over_point,
+      &comps.eye_vector,
+      &comps.normal_vector,
+      is_shadow,
+    )
   }
   pub fn intersect_world(&self, ray: &Ray) -> Vec<Intersection> {
     // Traverse all shapes, find intersections for all shapes
@@ -87,7 +90,7 @@ impl World {
       return Color::new(0., 0., 0.);
     }
     // use the intersection nearest to camera and find color at this point
-    let maybe_t =  xs.iter().find(|&i| i.t > 0.);
+    let maybe_t = xs.iter().find(|&i| i.t > 0.);
     if let Some(i) = maybe_t {
       let comps = Ray::precompute(&i, ray);
       return self.shade_hit(&comps);
@@ -112,7 +115,7 @@ impl World {
     let h = Intersection::hit(&mut intersections);
     let t = match h {
       Some(i) => i.t,
-      None =>  -1.
+      None => -1.,
     };
     if t > 0. && t < distance {
       return true;
