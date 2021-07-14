@@ -1,18 +1,21 @@
-use std::{fmt, cmp, sync::atomic::{AtomicUsize, Ordering}};
-use std::cell::RefCell;
-use std::rc::Rc;
-use crate::util;
+use super::materials::Material;
+use super::rays::Intersection;
+use super::rays::Ray;
 use crate::math;
 use crate::math::Tuple;
-use super::rays::Ray;
-use super::rays::Intersection;
-use super::materials::Material;
+use crate::util;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::{
+  cmp, fmt,
+  sync::atomic::{AtomicUsize, Ordering},
+};
 
 static GLOBAL_GEOMETRY_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 pub fn normal_at(shape: Rc<dyn Shape>, point: &math::Tuple) -> math::Tuple {
   let transform = shape.get_transform();
-  let inverted_transform =  match transform.invert() {
+  let inverted_transform = match transform.invert() {
     Some(i) => i,
     None => panic!(),
   };
@@ -30,8 +33,8 @@ pub trait Shape: fmt::Debug {
   fn get_id(&self) -> usize;
   fn get_transform(&self) -> math::Matrix;
   fn set_transform(&self, transform: math::Matrix);
-  fn get_material(&self) -> Material; 
-  fn set_material(&self, material: Material);
+  fn get_material(&self) -> Rc<Material>;
+  fn set_material(&mut self, material: Material);
   fn local_normal_at(&self, p: &math::Tuple) -> math::Tuple;
   fn intersect(&self, ray: &Ray) -> Vec<Intersection>;
   fn get_saved_ray(&self) -> Ray;
@@ -41,8 +44,8 @@ pub trait Shape: fmt::Debug {
 pub struct Sphere {
   pub id: usize,
   pub transform: RefCell<math::Matrix>,
-  pub material: RefCell<Material>,
-  saved_ray: Option<Ray>
+  pub material: Rc<Material>,
+  saved_ray: Option<Ray>,
 }
 
 impl Sphere {
@@ -50,8 +53,8 @@ impl Sphere {
     Sphere {
       id: GLOBAL_GEOMETRY_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
       transform: RefCell::new(math::Matrix::new_identity_matrix(4)),
-      material: RefCell::new(Material::new()),
-      saved_ray: None
+      material: Rc::new(Material::new()),
+      saved_ray: None,
     }
   }
 }
@@ -61,21 +64,20 @@ impl Shape for Sphere {
     self.id
   }
   fn get_transform(&self) -> math::Matrix {
-    
     let a = self.transform.clone();
     a.into_inner()
   }
   fn set_transform(&self, transform: math::Matrix) {
     self.transform.replace(transform);
   }
-  fn get_material(&self) -> Material {
-    self.material.clone().into_inner()
+  fn get_material(&self) -> Rc<Material> {
+    self.material.clone()
   }
-  fn set_material(&self, material: Material) {
-    self.material.replace(material);
+  fn set_material(&mut self, material: Material) {
+    self.material = Rc::new(material);
   }
   fn local_normal_at(&self, point_in_object_space: &math::Tuple) -> math::Tuple {
-    // The normal at a point on the unit-sphere is the vector from (0,0,0) to the point in 
+    // The normal at a point on the unit-sphere is the vector from (0,0,0) to the point in
     // object coordinates, so we must convert the point to object space before subtracting (0,0,0):
     point_in_object_space - &math::Tuple::point(0., 0., 0.)
   }
@@ -109,7 +111,7 @@ impl Shape for Sphere {
     });
     vec.push(Intersection {
       t: t2,
-      shape:  Rc::new(self.clone()),
+      shape: Rc::new(self.clone()),
     });
 
     vec
@@ -121,8 +123,7 @@ impl Shape for Sphere {
 
 impl cmp::PartialEq for Sphere {
   fn eq(&self, other: &Self) -> bool {
-    self.transform == other.transform &&
-    self.material == other.material
+    self.transform == other.transform && self.material == other.material
   }
 }
 
@@ -130,16 +131,16 @@ impl cmp::PartialEq for Sphere {
 pub struct TestShape {
   pub id: usize,
   pub transform: RefCell<math::Matrix>,
-  pub material: RefCell<Material>,
-  saved_ray: RefCell<Option<Ray>>
+  pub material: Rc<Material>,
+  saved_ray: RefCell<Option<Ray>>,
 }
 impl TestShape {
   pub fn new() -> TestShape {
     TestShape {
       id: GLOBAL_GEOMETRY_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
       transform: RefCell::new(math::Matrix::new_identity_matrix(4)),
-      material: RefCell::new(Material::new()),
-      saved_ray: RefCell::new(None)
+      material: Rc::new(Material::new()),
+      saved_ray: RefCell::new(None),
     }
   }
 }
@@ -155,15 +156,15 @@ impl Shape for TestShape {
   fn set_transform(&self, transform: math::Matrix) {
     self.transform.replace(transform);
   }
-  fn set_material(&self, material: Material) {
-    self.material.replace(material);
+  fn set_material(&mut self, material: Material) {
+    self.material = Rc::new(material);
   }
-  fn get_material(&self) -> Material {
-    self.material.clone().into_inner()
+  fn get_material(&self) -> Rc<Material> {
+    self.material.clone()
   }
 
   fn local_normal_at(&self, point_in_object_space: &math::Tuple) -> math::Tuple {
-    // The normal at a point on the unit-sphere is the vector from (0,0,0) to the point in 
+    // The normal at a point on the unit-sphere is the vector from (0,0,0) to the point in
     // object coordinates, so we must convert the point to object space before subtracting (0,0,0):
     point_in_object_space - &math::Tuple::point(0., 0., 0.)
   }
@@ -188,16 +189,16 @@ impl Shape for TestShape {
 pub struct Plane {
   pub id: usize,
   pub transform: RefCell<math::Matrix>,
-  pub material: RefCell<Material>,
-  saved_ray: RefCell<Option<Ray>>
+  pub material: Rc<Material>,
+  saved_ray: RefCell<Option<Ray>>,
 }
 impl Plane {
   pub fn new() -> Plane {
     Plane {
       id: GLOBAL_GEOMETRY_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
       transform: RefCell::new(math::Matrix::new_identity_matrix(4)),
-      material: RefCell::new(Material::new()),
-      saved_ray: RefCell::new(None)
+      material: Rc::new(Material::new()),
+      saved_ray: RefCell::new(None),
     }
   }
 }
@@ -213,11 +214,11 @@ impl Shape for Plane {
   fn set_transform(&self, transform: math::Matrix) {
     self.transform.replace(transform);
   }
-  fn set_material(&self, material: Material) {
-    self.material.replace(material);
+  fn set_material(&mut self, material: Material) {
+    self.material = Rc::new(material);
   }
-  fn get_material(&self) -> Material {
-    self.material.clone().into_inner()
+  fn get_material(&self) -> Rc<Material> {
+    self.material.clone()
   }
 
   fn local_normal_at(&self, _: &math::Tuple) -> math::Tuple {
@@ -229,7 +230,6 @@ impl Shape for Plane {
       Some(i) => i,
       None => panic!(),
     };
-    
     let ray = ray.transform(&inverse_transform);
     self.saved_ray.replace(Some(ray.clone()));
     let mut vec = Vec::with_capacity(1);

@@ -5,7 +5,13 @@ use crate::math;
 use crate::math::Matrix;
 use crate::math::Tuple;
 use core::cell::RefCell;
+use std::fmt;
 use std::rc::Rc;
+
+pub trait Pattern: fmt::Debug {
+  fn stripe_at(&self, point: &Tuple) -> Color;
+  fn stripe_at_object(&self, object: Rc<dyn Shape>, point: &Tuple) -> Color;
+}
 
 #[derive(Clone, Debug)]
 pub struct StripePattern {
@@ -29,13 +35,15 @@ impl StripePattern {
       transform: transform,
     }
   }
-  pub fn stripe_at(&self, point: &Tuple) -> Color {
+}
+impl Pattern for StripePattern {
+  fn stripe_at(&self, point: &Tuple) -> Color {
     match point.x.floor() as i64 % 2 {
       0 => self.color_a.clone(),
       _ => self.color_b.clone(),
     }
   }
-  pub fn stripe_at_object(&self, object: Rc<dyn Shape>, point: &Tuple) -> Color {
+  fn stripe_at_object(&self, object: Rc<dyn Shape>, point: &Tuple) -> Color {
     let inverse_obj = object.get_transform().invert().unwrap();
     let object_space_point = &inverse_obj * point;
     let pattern_space_point = &self.transform.invert().unwrap() * &object_space_point;

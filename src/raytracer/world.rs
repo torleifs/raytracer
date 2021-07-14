@@ -31,7 +31,7 @@ impl World {
     mat.color = Color::new(0.8, 1.0, 0.8);
     mat.diffuse = 0.7;
     mat.specular = 0.2;
-    s1.material = RefCell::new(mat);
+    s1.material = Rc::new(mat);
     let mut s2 = Sphere::new();
     s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
     World {
@@ -50,12 +50,12 @@ impl World {
     mat.diffuse = 0.7;
     mat.specular = 0.2;
     mat.ambient = ambience;
-    s1.material = RefCell::new(mat);
+    s1.material = Rc::new(mat);
     let mut s2 = Sphere::new();
     s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
     mat = Material::new();
     mat.ambient = ambience;
-    s2.material = RefCell::new(mat);
+    s2.material = Rc::new(mat);
     World {
       shapes: vec![Rc::new(s1), Rc::new(s2)],
       lights,

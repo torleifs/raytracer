@@ -1,20 +1,21 @@
 use super::geometry::Shape;
 use super::PointLight;
 use crate::color::Color;
+use crate::raytracer::patterns::Pattern;
 use crate::raytracer::patterns::StripePattern;
 use crate::raytracer::Sphere;
 use crate::{math::Tuple, util::equal};
 use std::cmp;
 use std::rc::Rc;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Material {
   pub color: Color,
   pub ambient: f64,
   pub diffuse: f64,
   pub specular: f64,
   pub shininess: f64,
-  pub pattern: Option<StripePattern>,
+  pub pattern: Option<Rc<dyn Pattern>>,
 }
 
 impl Material {
@@ -87,10 +88,10 @@ impl cmp::PartialEq for Material {
 #[test]
 fn light_with_pattern_applied() {
   let mut m = Material::new();
-  m.pattern = Some(StripePattern::new(
+  m.pattern = Some(Rc::new(StripePattern::new(
     Color::new(1.0, 1.0, 1.0),
     Color::new(0.0, 0.0, 0.0),
-  ));
+  )));
   m.ambient = 1.0;
   m.diffuse = 0.0;
   m.specular = 0.0;

@@ -21,25 +21,25 @@ fn main() {
   let mut mat = Material::new();
   mat.color = Color::new(1., 0.9, 0.9);
   mat.specular = 0.;
-  mat.pattern = Some(StripePattern::new(
+  mat.pattern = Some(Rc::new(StripePattern::new(
     Color::new(0.0, 1.0, 0.0),
     Color::new(0.0, 0.0, 1.0),
-  ));
-  floor.material = RefCell::new(mat);
+  )));
+  floor.material = Rc::new(mat);
 
   let mut middle = Sphere::new();
   middle.transform = RefCell::new(Matrix::translation(-0.5, 1., 0.5));
   mat = Material::new();
-  mat.pattern = Some(StripePattern::new_with_transform(
+  mat.pattern = Some(Rc::new(StripePattern::new_with_transform(
     Color::new(1.0, 1.0, 0.0),
     Color::new(0.0, 1.0, 1.0),
     Matrix::rotation_y(-0.5) * Matrix::scale(0.2, 1., 1.),
-  ));
+  )));
 
   mat.color = Color::new(0.1, 1., 0.5);
   mat.diffuse = 0.7;
   mat.specular = 0.3;
-  middle.material = RefCell::new(mat);
+  middle.material = Rc::new(mat);
 
   let mut right = Sphere::new();
   right.transform =
@@ -48,7 +48,7 @@ fn main() {
   mat.color = Color::new(0.5, 1.0, 0.1);
   mat.diffuse = 0.7;
   mat.specular = 0.3;
-  right.material = RefCell::new(mat);
+  right.material = Rc::new(mat);
 
   let mut left = Sphere::new();
   left.transform =
@@ -57,7 +57,7 @@ fn main() {
   mat.color = Color::new(1.0, 0.8, 0.1);
   mat.diffuse = 0.7;
   mat.specular = 0.3;
-  left.material = RefCell::new(mat);
+  left.material = Rc::new(mat);
 
   let mut w = World::new();
   w.shapes = vec![

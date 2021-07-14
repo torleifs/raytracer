@@ -338,16 +338,16 @@ pub fn default_material() {
 #[test]
 pub fn sphere_has_default_material() {
   let s = Sphere::new();
-  assert_eq!(s.material.into_inner(), Material::new());
+  assert_eq!(Rc::try_unwrap(s.material), Ok(Material::new()));
 }
 
 #[test]
 pub fn sphere_can_be_assigned_material() {
   let mut s = Sphere::new();
-  let mut m = Material::new();
-  m.ambient = 1.;
-  s.material = RefCell::new(m.clone());
-  assert_eq!(s.material.into_inner(), m);
+  let mut m = Rc::new(Material::new());
+  Rc::get_mut(&mut m).unwrap().ambient = 1.;
+  s.material = m.clone();
+  assert_eq!(s.material, m);
 }
 
 /// Light source
@@ -467,7 +467,7 @@ pub fn default_world() {
   mat.color = Color::new(0.8, 1.0, 0.8);
   mat.diffuse = 0.7;
   mat.specular = 0.2;
-  s1.material = RefCell::new(mat);
+  s1.material = Rc::new(mat);
   let s1: Rc<dyn Shape> = Rc::new(s1);
   let mut s2 = Sphere::new();
   s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
@@ -807,16 +807,17 @@ pub fn shape_assign_transformation() {
 pub fn shape_default_material() {
   let s = TestShape::new();
   let m = s.get_material();
-  assert_eq!(m, Material::new());
+  assert_eq!(*m, Material::new());
 }
 
 #[test]
 pub fn shape_assign_material() {
-  let s = TestShape::new();
-  let mut m = Material::new();
-  m.ambient = 1.0;
-  s.set_material(m.clone());
-  assert_eq!(s.get_material(), m);
+  let mut s = TestShape::new();
+  let mut m = Rc::new(Material::new());
+  Rc::get_mut(&mut m).unwrap().ambient = 1.;
+
+  s.material = m.clone();
+  assert_eq!(s.material, m);
 }
 
 #[test]
