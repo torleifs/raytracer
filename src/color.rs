@@ -20,13 +20,19 @@ impl ops::Sub<Color> for Color {
     Color::from_tuple(self.tuple - &rhs.tuple)
   }
 }
+impl ops::Sub<&Color> for Color {
+  type Output = Color;
+  fn sub(self, rhs: &Color) -> Color {
+    Color::from_tuple(self.tuple - &rhs.tuple)
+  }
+}
 impl ops::Mul<f64> for Color {
   type Output = Color;
   fn mul(self, rhs: f64) -> Color {
     Color::from_tuple(self.tuple * rhs)
   }
 }
-impl ops::Mul<f64> for  &Color {
+impl ops::Mul<f64> for &Color {
   type Output = Color;
   fn mul(self, rhs: f64) -> Color {
     Color::from_tuple(self.tuple.clone() * rhs)
@@ -48,13 +54,17 @@ impl ops::Mul<Color> for Color {
 impl<'a> ops::Mul for &'a Color {
   type Output = Color;
   fn mul(self, other: &'a Color) -> Color {
-      Color::new(self.r() * other.r(), self.g() * other.g(), self.b() * other.b())
+    Color::new(
+      self.r() * other.r(),
+      self.g() * other.g(),
+      self.b() * other.b(),
+    )
   }
 }
 impl<'a> ops::Mul<&Tuple> for &'a Color {
   type Output = Color;
-  fn mul(self, other: & Tuple) -> Color {
-      Color::new(self.r() * other.x, self.g() * other.y, self.b() * other.z)
+  fn mul(self, other: &Tuple) -> Color {
+    Color::new(self.r() * other.x, self.g() * other.y, self.b() * other.z)
   }
 }
 impl Color {

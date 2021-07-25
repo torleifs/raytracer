@@ -2,13 +2,13 @@ use crate::raytracer::Intersection;
 use core::cell::RefCell;
 use std::rc::Rc;
 
-use super::{Material, Ray, Sphere};
-
 use super::PointLight;
+use super::{Material, Ray, Sphere};
 use crate::color::Color;
 use crate::math::Matrix;
 use crate::math::Tuple;
 use crate::raytracer::geometry::Shape;
+use crate::util;
 pub struct World {
   pub shapes: Vec<Rc<dyn Shape>>,
   pub lights: Vec<PointLight>,
@@ -28,7 +28,7 @@ impl World {
 
     let mut s1 = Sphere::new();
     let mut mat = Material::new();
-    mat.color = Color::new(0.8, 1.0, 0.8);
+    mat.color = Color::new(0.8, 1.0, 0.6);
     mat.diffuse = 0.7;
     mat.specular = 0.2;
     s1.material = Rc::new(mat);
@@ -61,9 +61,9 @@ impl World {
       lights,
     }
   }
-  pub fn shade_hit(&self, comps: &super::rays::PreComputation) -> Color {
+  pub fn shade_hit(&self, comps: &super::rays::PreComputation, remaining: u8) -> Color {
     let is_shadow = self.is_shadowed(&comps.over_point);
-    Material::lighting(
+    let surface_color = Material::lighting(
       &comps.shape.get_material(),
       comps.shape.clone(),
       &self.lights[0],
@@ -71,7 +71,9 @@ impl World {
       &comps.eye_vector,
       &comps.normal_vector,
       is_shadow,
-    )
+    );
+    let reflected_color = self.reflected_color(&comps, remaining - 1);
+    return surface_color + &reflected_color;
   }
   pub fn intersect_world(&self, ray: &Ray) -> Vec<Intersection> {
     // Traverse all shapes, find intersections for all shapes
@@ -84,7 +86,7 @@ impl World {
     vec.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap());
     vec
   }
-  pub fn color_at(&self, ray: &Ray) -> Color {
+  pub fn color_at(&self, ray: &Ray, remaining: u8) -> Color {
     let xs = self.intersect_world(ray);
     if xs.len() < 1 {
       return Color::new(0., 0., 0.);
@@ -93,7 +95,7 @@ impl World {
     let maybe_t = xs.iter().find(|&i| i.t > 0.);
     if let Some(i) = maybe_t {
       let comps = Ray::precompute(&i, ray);
-      return self.shade_hit(&comps);
+      return self.shade_hit(&comps, remaining);
     } else {
       return Color::new(0.0, 0.0, 0.0);
     }
@@ -122,5 +124,22 @@ impl World {
     } else {
       return false;
     }
+  }
+
+  pub fn reflected_color(
+    &self,
+    precomputation: &super::rays::PreComputation,
+    remaining: u8,
+  ) -> Color {
+    if remaining < 1 {
+      return Color::new(0.0, 0.0, 0.0);
+    }
+    if util::equal(precomputation.shape.get_material().reflective, 0.0) {
+      return Color::new(0.0, 0.0, 0.0);
+    }
+    let reflect_ray = Ray::new(&precomputation.over_point, &precomputation.reflectv);
+    let color = self.color_at(&reflect_ray, remaining);
+
+    return color * precomputation.shape.get_material().reflective;
   }
 }

@@ -464,7 +464,7 @@ pub fn default_world() {
   let light = PointLight::new(&Tuple::point(-10., 10., -10.), &Color::new(1., 1., 1.));
   let mut s1 = Sphere::new();
   let mut mat = Material::new();
-  mat.color = Color::new(0.8, 1.0, 0.8);
+  mat.color = Color::new(0.8, 1.0, 0.6);
   mat.diffuse = 0.7;
   mat.specular = 0.2;
   s1.material = Rc::new(mat);
@@ -530,8 +530,8 @@ pub fn shade_intersection() {
   let i = Intersection::new(shape, 4.0);
   let comps = Ray::precompute(&i, &ray);
 
-  let c = World::shade_hit(&w, &comps);
-  assert_eq!(c, Color::new(0.38066, 0.47583, 0.3806)); // TODO: the b component is not the same as in book. page 95
+  let c = World::shade_hit(&w, &comps, 4);
+  assert_eq!(c, Color::new(0.38066, 0.47583, 0.2855));
 }
 
 #[test]
@@ -546,7 +546,7 @@ pub fn shade_intersection_from_inside() {
   let i = Intersection::new(shape, 0.5);
   let comps = Ray::precompute(&i, &ray);
 
-  let c = World::shade_hit(&w, &comps);
+  let c = World::shade_hit(&w, &comps, 4);
   assert_eq!(c, Color::new(0.90498, 0.90498, 0.90498));
 }
 
@@ -567,7 +567,7 @@ pub fn shade_intersection_in_shadow() {
   let i = Intersection::new(&w.shapes[1], 4.0);
   let comps = Ray::precompute(&i, &ray);
 
-  let c = World::shade_hit(&w, &comps);
+  let c = World::shade_hit(&w, &comps, 4);
   assert_eq!(c, Color::new(0.1, 0.1, 0.1));
 }
 
@@ -576,7 +576,7 @@ pub fn color_when_ray_misses() {
   let w = World::default();
   let ray = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 1., 0.));
 
-  let c = w.color_at(&ray);
+  let c = w.color_at(&ray, 4);
   assert_eq!(c, Color::new(0., 0., 0.));
 }
 
@@ -585,8 +585,8 @@ pub fn color_when_ray_hits() {
   let w = World::default();
   let ray = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
 
-  let c = w.color_at(&ray);
-  assert_eq!(c, Color::new(0.38066, 0.47583, 0.3806));
+  let c = w.color_at(&ray, 4);
+  assert_eq!(c, Color::new(0.38066, 0.47583, 0.2855));
 }
 
 #[test]
@@ -596,7 +596,7 @@ pub fn color_with_intersection_behind_ray() {
 
   let ray = Ray::new(&Tuple::point(0., 0., 0.75), &Tuple::vector(0., 0., -1.));
 
-  let c = w.color_at(&ray);
+  let c = w.color_at(&ray, 4);
   let m_inner = inner.get_material();
   assert_eq!(c, m_inner.color);
 }
@@ -779,6 +779,46 @@ pub fn no_shadow_when_object_behind_point() {
 }
 
 #[test]
+pub fn reflected_color_for_nonreflective_material() {
+  let mut w = World::new();
+
+  let s1 = Sphere::new();
+  let mut s2 = Sphere::new();
+  let mut mat = Material::new();
+  mat.ambient = 1.0;
+  s2.material = Rc::new(mat);
+  w.shapes = vec![Rc::new(s1), Rc::new(s2)];
+
+  let r = Ray::new(&Tuple::point(0.0, 0.0, 0.0), &Tuple::vector(0.0, 0.0, 1.0));
+  let i = Intersection::new(&w.shapes[1], 1.0);
+  let comps = Ray::precompute(&i, &r);
+  let c = w.reflected_color(&comps, 4);
+  assert_eq!(c, Color::new(0.0, 0.0, 0.0));
+}
+
+#[test]
+pub fn reflected_color_for_reflective_material() {
+  let mut w = World::default();
+  let mut plane = Plane::new();
+  plane.transform = RefCell::new(Matrix::translation(0.0, -1.0, 0.));
+
+  let mut mat = Material::new();
+  mat.reflective = 0.5;
+  plane.material = Rc::new(mat);
+  w.shapes.push(Rc::new(plane));
+
+  let r = Ray::new(
+    &Tuple::point(0.0, 0.0, -3.0),
+    &Tuple::vector(0.0, -(2. as f64).sqrt() / 2., (2.0 as f64).sqrt() / 2.),
+  );
+  let i = Intersection::new(&w.shapes[2], (2. as f64).sqrt());
+  let comps = Ray::precompute(&i, &r);
+  let c = w.reflected_color(&comps, 4);
+
+  assert_eq!(c, Color::new(0.19032, 0.2379, 0.14274));
+}
+
+#[test]
 pub fn hit_should_offset_point() {
   let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
   let mut s = Sphere::new();
@@ -788,6 +828,92 @@ pub fn hit_should_offset_point() {
   let comps = Ray::precompute(&i, &r);
   assert!(comps.over_point.z < -util::EPSILON / 2.);
   assert!(comps.point.z > comps.over_point.z);
+}
+
+#[test]
+fn precompute_reflect_vector() {
+  let s = Plane::new();
+  let r = Ray::new(
+    &Tuple::point(0.0, 1.0, -1.0),
+    &Tuple::vector(0.0, -(2.0 as f64).sqrt() / 2.0, (2.0 as f64).sqrt() / 2.0),
+  );
+  let i = Intersection::new(&(Rc::new(s) as Rc<dyn Shape>), (2.0 as f64).sqrt());
+  let c = Ray::precompute(&i, &r);
+  assert_eq!(
+    c.reflectv,
+    Tuple::vector(0.0, (2.0 as f64).sqrt() / 2.0, (2.0 as f64).sqrt() / 2.0)
+  );
+}
+
+#[test]
+fn shade_hit_reflective_material() {
+  let mut w = World::default();
+  let mut plane = Plane::new();
+  plane.transform = RefCell::new(Matrix::translation(0.0, -1.0, 0.));
+
+  let mut mat = Material::new();
+  mat.reflective = 0.5;
+  plane.material = Rc::new(mat);
+  w.shapes.push(Rc::new(plane));
+
+  let r = Ray::new(
+    &Tuple::point(0.0, 0.0, -3.0),
+    &Tuple::vector(0.0, -(2. as f64).sqrt() / 2., (2.0 as f64).sqrt() / 2.),
+  );
+  let i = Intersection::new(&w.shapes[2], (2. as f64).sqrt());
+  let comps = Ray::precompute(&i, &r);
+  let c = w.shade_hit(&comps, 4);
+
+  assert_eq!(c, Color::new(0.87677, 0.92436, 0.82918));
+}
+
+#[test]
+fn color_at_with_mutually_reflective_surfaces() {
+  let mut w = World::new();
+  w.lights = vec![PointLight::new(
+    &Tuple::point(0., 0., 0.),
+    &Color::new(1., 1., 1.),
+  )];
+
+  let mut plane = Plane::new();
+  plane.transform = RefCell::new(Matrix::translation(0.0, -1.0, 0.));
+  let mut mat = Material::new();
+  mat.reflective = 1.0;
+  plane.material = Rc::new(mat);
+  w.shapes.push(Rc::new(plane));
+
+  let mut plane = Plane::new();
+  plane.transform = RefCell::new(Matrix::translation(0.0, 1.0, 0.));
+  let mut mat = Material::new();
+  mat.reflective = 1.0;
+  plane.material = Rc::new(mat);
+  w.shapes.push(Rc::new(plane));
+
+  let r = Ray::new(&Tuple::point(0.0, 0.0, 0.0), &Tuple::vector(0.0, 1., 0.));
+  let c = w.color_at(&r, 4);
+  println!("{}", c.r());
+}
+
+#[test]
+fn reflected_color_at_max_recursive_depth() {
+  let mut w = World::default();
+  let mut plane = Plane::new();
+  plane.transform = RefCell::new(Matrix::translation(0.0, -1.0, 0.));
+
+  let mut mat = Material::new();
+  mat.reflective = 0.5;
+  plane.material = Rc::new(mat);
+  w.shapes.push(Rc::new(plane));
+
+  let r = Ray::new(
+    &Tuple::point(0.0, 0.0, -3.0),
+    &Tuple::vector(0.0, -(2. as f64).sqrt() / 2., (2.0 as f64).sqrt() / 2.),
+  );
+  let i = Intersection::new(&w.shapes[2], (2. as f64).sqrt());
+  let comps = Ray::precompute(&i, &r);
+  let c = w.reflected_color(&comps, 0);
+
+  assert_eq!(c, Color::new(0., 0., 0.));
 }
 
 #[test]

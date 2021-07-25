@@ -16,6 +16,7 @@ pub struct Material {
   pub specular: f64,
   pub shininess: f64,
   pub pattern: Option<Rc<dyn Pattern>>,
+  pub reflective: f64,
 }
 
 impl Material {
@@ -27,6 +28,7 @@ impl Material {
       specular: 0.9,
       shininess: 200.0,
       pattern: None,
+      reflective: 0.0,
     }
   }
   // Calculate the color of a point in 3D space using the Phong shading model
@@ -41,7 +43,7 @@ impl Material {
   ) -> Color {
     let effective_color;
     if let Some(pattern) = &material.pattern {
-      effective_color = &pattern.stripe_at_object(object.clone(), point) * &light.intensity;
+      effective_color = &pattern.pattern_at_shape(object.clone(), point) * &light.intensity;
     } else {
       effective_color = &material.color * &light.intensity;
     }
@@ -119,4 +121,10 @@ fn light_with_pattern_applied() {
 
   assert_eq!(c1, Color::new(1.0, 1.0, 1.0));
   assert_eq!(c2, Color::new(0.0, 0.0, 0.0));
+}
+
+#[test]
+fn reflectivity_default_material() {
+  let m = Material::new();
+  assert!(equal(m.reflective, 0.0));
 }
