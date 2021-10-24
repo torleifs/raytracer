@@ -1,5 +1,4 @@
 use crate::raytracer::Camera;
-use core::cell::RefCell;
 use std::f64::consts;
 use std::rc::Rc;
 mod canvas;
@@ -30,7 +29,7 @@ fn main() {
   floor.material = Rc::new(mat);
 
   let mut middle = Sphere::new();
-  middle.transform = RefCell::new(Matrix::translation(-0.5, 1., 0.5));
+  middle.transform = Rc::new(Matrix::translation(-0.5, 1., 0.5));
   mat = Material::new();
   mat.reflective = 0.1;
   mat.pattern = Some(Rc::new(StripePattern::new_with_transform(
@@ -45,8 +44,7 @@ fn main() {
   middle.material = Rc::new(mat);
 
   let mut right = Sphere::new();
-  right.transform =
-    RefCell::new(Matrix::translation(1.5, 0.5, -0.5) * Matrix::scale(0.5, 0.5, 0.5));
+  right.transform = Rc::new(Matrix::translation(1.5, 0.5, -0.5) * Matrix::scale(0.5, 0.5, 0.5));
   mat = Material::new();
   mat.color = Color::new(1., 1.0, 1.);
   mat.reflective = 1.0;
@@ -56,7 +54,7 @@ fn main() {
 
   let mut left = Sphere::new();
   left.transform =
-    RefCell::new(Matrix::translation(-1.5, 0.66, -0.75) * Matrix::scale(0.33, 0.33, 0.33));
+    Rc::new(Matrix::translation(-1.5, 0.66, -0.75) * Matrix::scale(0.33, 0.33, 0.33));
   mat = Material::new();
   mat.color = Color::new(1.0, 0.8, 0.1);
   mat.diffuse = 0.7;

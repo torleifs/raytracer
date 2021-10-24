@@ -1,7 +1,7 @@
 use super::Intersection;
 use super::Ray;
 use super::Sphere;
-use std::cell::RefCell;
+
 use std::{f64::consts, rc::Rc};
 
 use super::geometry::normal_at;
@@ -212,23 +212,23 @@ pub fn scale_ray() {
 #[test]
 pub fn sphere_default_transform() {
   let s = Sphere::new();
-  assert_eq!(s.transform.into_inner(), Matrix::new_identity_matrix(4))
+  assert_eq!(*s.transform, Matrix::new_identity_matrix(4))
 }
 
 #[test]
 pub fn change_sphere_transform() {
   let mut s = Sphere::new();
   let t = Matrix::translation(2., 3., 4.);
-  s.transform = RefCell::new(t.clone());
+  s.transform = Rc::new(t.clone());
 
-  assert_eq!(s.transform.into_inner(), t);
+  assert_eq!(*s.transform, t);
 }
 // TODO: consider change ray arguments to two tuples (Rust type)
 #[test]
 pub fn intersect_scaled_sphere_with_ray() {
   let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
   let mut s = Sphere::new();
-  s.transform = RefCell::new(Matrix::scale(2., 2., 2.));
+  s.transform = Rc::new(Matrix::scale(2., 2., 2.));
   let s: Rc<dyn Shape> = Rc::new(s);
   let xs = s.intersect(&r);
   assert_eq!(xs.len(), 2);
@@ -239,7 +239,7 @@ pub fn intersect_scaled_sphere_with_ray() {
 pub fn intersect_translated_sphere_with_ray() {
   let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
   let mut s = Sphere::new();
-  s.transform = RefCell::new(Matrix::translation(5., 0., 0.));
+  s.transform = Rc::new(Matrix::translation(5., 0., 0.));
   let s: Rc<dyn Shape> = Rc::new(s);
   let xs = s.intersect(&r);
   assert_eq!(xs.len(), 0);
@@ -298,7 +298,7 @@ pub fn normal_is_normalized() {
 #[test]
 pub fn compute_normal_on_translated_sphere() {
   let mut s = Sphere::new();
-  s.transform = RefCell::new(Matrix::translation(0., 1., 0.));
+  s.transform = Rc::new(Matrix::translation(0., 1., 0.));
   let n = normal_at(Rc::new(s), &Tuple::point(0., 1.70711, -0.70711));
   assert_eq!(n, Tuple::vector(0., 0.70711, -0.70711));
 }
@@ -306,7 +306,7 @@ pub fn compute_normal_on_translated_sphere() {
 #[test]
 pub fn compute_normal_on_transformed_sphere() {
   let mut s = Sphere::new();
-  s.transform = RefCell::new(Matrix::scale(1., 0.5, 1.) * Matrix::rotation_z(consts::PI / 5.));
+  s.transform = Rc::new(Matrix::scale(1., 0.5, 1.) * Matrix::rotation_z(consts::PI / 5.));
   let n = normal_at(
     Rc::new(s),
     &Tuple::point(0., (2. as f64).sqrt() / 2., -(2. as f64).sqrt() / 2.),
@@ -470,7 +470,7 @@ pub fn default_world() {
   s1.material = Rc::new(mat);
   let s1: Rc<dyn Shape> = Rc::new(s1);
   let mut s2 = Sphere::new();
-  s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
+  s2.transform = Rc::new(Matrix::scale(0.5, 0.5, 0.5));
   let s2: Rc<dyn Shape> = Rc::new(s2);
   let w = World::default();
   assert_eq!(w.lights, vec![light]);
@@ -559,7 +559,7 @@ pub fn shade_intersection_in_shadow() {
   )];
   let s1 = Sphere::new();
   let mut s2 = Sphere::new();
-  s2.transform = RefCell::new(Matrix::translation(0., 0., 10.));
+  s2.transform = Rc::new(Matrix::translation(0., 0., 10.));
   w.shapes = vec![Rc::new(s1), Rc::new(s2)];
 
   let ray = Ray::new(&Tuple::point(0., 0., 5.), &Tuple::vector(0., 0., 1.));
@@ -800,7 +800,7 @@ pub fn reflected_color_for_nonreflective_material() {
 pub fn reflected_color_for_reflective_material() {
   let mut w = World::default();
   let mut plane = Plane::new();
-  plane.transform = RefCell::new(Matrix::translation(0.0, -1.0, 0.));
+  plane.transform = Rc::new(Matrix::translation(0.0, -1.0, 0.));
 
   let mut mat = Material::new();
   mat.reflective = 0.5;
@@ -822,7 +822,7 @@ pub fn reflected_color_for_reflective_material() {
 pub fn hit_should_offset_point() {
   let r = Ray::new(&Tuple::point(0., 0., -5.), &Tuple::vector(0., 0., 1.));
   let mut s = Sphere::new();
-  s.transform = RefCell::new(Matrix::translation(0., 0., 1.));
+  s.transform = Rc::new(Matrix::translation(0., 0., 1.));
   let s_s: Rc<dyn Shape> = Rc::new(s);
   let i = Intersection::new(&s_s, 5.0);
   let comps = Ray::precompute(&i, &r);
@@ -849,7 +849,7 @@ fn precompute_reflect_vector() {
 fn shade_hit_reflective_material() {
   let mut w = World::default();
   let mut plane = Plane::new();
-  plane.transform = RefCell::new(Matrix::translation(0.0, -1.0, 0.));
+  plane.transform = Rc::new(Matrix::translation(0.0, -1.0, 0.));
 
   let mut mat = Material::new();
   mat.reflective = 0.5;
@@ -876,14 +876,14 @@ fn color_at_with_mutually_reflective_surfaces() {
   )];
 
   let mut plane = Plane::new();
-  plane.transform = RefCell::new(Matrix::translation(0.0, -1.0, 0.));
+  plane.transform = Rc::new(Matrix::translation(0.0, -1.0, 0.));
   let mut mat = Material::new();
   mat.reflective = 1.0;
   plane.material = Rc::new(mat);
   w.shapes.push(Rc::new(plane));
 
   let mut plane = Plane::new();
-  plane.transform = RefCell::new(Matrix::translation(0.0, 1.0, 0.));
+  plane.transform = Rc::new(Matrix::translation(0.0, 1.0, 0.));
   let mut mat = Material::new();
   mat.reflective = 1.0;
   plane.material = Rc::new(mat);
@@ -898,7 +898,7 @@ fn color_at_with_mutually_reflective_surfaces() {
 fn reflected_color_at_max_recursive_depth() {
   let mut w = World::default();
   let mut plane = Plane::new();
-  plane.transform = RefCell::new(Matrix::translation(0.0, -1.0, 0.));
+  plane.transform = Rc::new(Matrix::translation(0.0, -1.0, 0.));
 
   let mut mat = Material::new();
   mat.reflective = 0.5;
@@ -919,14 +919,14 @@ fn reflected_color_at_max_recursive_depth() {
 #[test]
 pub fn shape_default_transformation() {
   let s = TestShape::new();
-  assert_eq!(s.get_transform(), Matrix::new_identity_matrix(4));
+  assert_eq!(*s.get_transform(), Matrix::new_identity_matrix(4));
 }
 
 #[test]
 pub fn shape_assign_transformation() {
-  let s = TestShape::new();
+  let mut s = TestShape::new();
   s.set_transform(Matrix::translation(2., 3., 4.));
-  assert_eq!(s.get_transform(), Matrix::translation(2., 3., 4.));
+  assert_eq!(*s.get_transform(), Matrix::translation(2., 3., 4.));
 }
 
 #[test]
@@ -949,7 +949,7 @@ pub fn shape_assign_material() {
 #[test]
 pub fn intersect_scaled_shape_with_ray() {
   let r = Ray::new(&Tuple::point(0.0, 0.0, -5.0), &Tuple::vector(0.0, 0.0, 1.0));
-  let s = TestShape::new();
+  let mut s = TestShape::new();
   s.set_transform(Matrix::scale(2.0, 2.0, 2.0));
   let _ = s.intersect(&r);
 
@@ -960,7 +960,7 @@ pub fn intersect_scaled_shape_with_ray() {
 #[test]
 pub fn intersect_transformed_shape_with_ray() {
   let r = Ray::new(&Tuple::point(0.0, 0.0, -5.0), &Tuple::vector(0.0, 0.0, 1.0));
-  let s = TestShape::new();
+  let mut s = TestShape::new();
   s.set_transform(Matrix::translation(5.0, 0.0, 0.0));
   let _ = s.intersect(&r);
 
@@ -970,7 +970,7 @@ pub fn intersect_transformed_shape_with_ray() {
 
 #[test]
 pub fn compute_normal_translated_shape() {
-  let s = TestShape::new();
+  let mut s = TestShape::new();
   s.set_transform(Matrix::translation(0.0, 1.0, 0.0));
   let n = normal_at(Rc::new(s), &Tuple::point(0.0, 1.70711, -0.70711));
 
@@ -979,7 +979,7 @@ pub fn compute_normal_translated_shape() {
 
 #[test]
 pub fn compute_normal_transformed_shape() {
-  let s = TestShape::new();
+  let mut s = TestShape::new();
   let m = Matrix::scale(1.0, 0.5, 1.0) * Matrix::rotation_z(consts::PI / 5.0);
   s.set_transform(m);
   let n = normal_at(

@@ -31,8 +31,8 @@ pub fn normal_at(shape: Rc<dyn Shape>, point: &math::Tuple) -> math::Tuple {
 
 pub trait Shape: fmt::Debug {
   fn get_id(&self) -> usize;
-  fn get_transform(&self) -> math::Matrix;
-  fn set_transform(&self, transform: math::Matrix);
+  fn get_transform(&self) -> Rc<math::Matrix>;
+  fn set_transform(&mut self, transform: math::Matrix);
   fn get_material(&self) -> Rc<Material>;
   fn set_material(&mut self, material: Material);
   fn local_normal_at(&self, p: &math::Tuple) -> math::Tuple;
@@ -43,7 +43,7 @@ pub trait Shape: fmt::Debug {
 #[derive(Debug, Clone)]
 pub struct Sphere {
   pub id: usize,
-  pub transform: RefCell<math::Matrix>,
+  pub transform: Rc<math::Matrix>,
   pub material: Rc<Material>,
   saved_ray: Option<Ray>,
 }
@@ -52,7 +52,7 @@ impl Sphere {
   pub fn new() -> Sphere {
     Sphere {
       id: GLOBAL_GEOMETRY_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
-      transform: RefCell::new(math::Matrix::new_identity_matrix(4)),
+      transform: Rc::new(math::Matrix::new_identity_matrix(4)),
       material: Rc::new(Material::new()),
       saved_ray: None,
     }
@@ -63,12 +63,11 @@ impl Shape for Sphere {
   fn get_id(&self) -> usize {
     self.id
   }
-  fn get_transform(&self) -> math::Matrix {
-    let a = self.transform.clone();
-    a.into_inner()
+  fn get_transform(&self) -> Rc<math::Matrix> {
+    self.transform.clone()
   }
-  fn set_transform(&self, transform: math::Matrix) {
-    self.transform.replace(transform);
+  fn set_transform(&mut self, transform: math::Matrix) {
+    self.transform = Rc::new(transform)
   }
   fn get_material(&self) -> Rc<Material> {
     self.material.clone()
@@ -130,15 +129,17 @@ impl cmp::PartialEq for Sphere {
 #[derive(Debug, Clone)]
 pub struct TestShape {
   pub id: usize,
-  pub transform: RefCell<math::Matrix>,
+  pub transform: Rc<math::Matrix>,
   pub material: Rc<Material>,
+  // We need interior mutability for saved_ray because intersect is used in an RC<dyn Shape> vector
+  // Therefore intersect must mutate saved_ray without taking a &mut self
   saved_ray: RefCell<Option<Ray>>,
 }
 impl TestShape {
   pub fn new() -> TestShape {
     TestShape {
       id: GLOBAL_GEOMETRY_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
-      transform: RefCell::new(math::Matrix::new_identity_matrix(4)),
+      transform: Rc::new(math::Matrix::new_identity_matrix(4)),
       material: Rc::new(Material::new()),
       saved_ray: RefCell::new(None),
     }
@@ -149,12 +150,11 @@ impl Shape for TestShape {
     self.id
   }
 
-  fn get_transform(&self) -> math::Matrix {
-    let a = self.transform.clone();
-    a.into_inner()
+  fn get_transform(&self) -> Rc<math::Matrix> {
+    self.transform.clone()
   }
-  fn set_transform(&self, transform: math::Matrix) {
-    self.transform.replace(transform);
+  fn set_transform(&mut self, transform: math::Matrix) {
+    self.transform = Rc::new(transform)
   }
   fn set_material(&mut self, material: Material) {
     self.material = Rc::new(material);
@@ -188,7 +188,7 @@ impl Shape for TestShape {
 #[derive(Debug, Clone)]
 pub struct Plane {
   pub id: usize,
-  pub transform: RefCell<math::Matrix>,
+  pub transform: Rc<math::Matrix>,
   pub material: Rc<Material>,
   saved_ray: RefCell<Option<Ray>>,
 }
@@ -196,7 +196,7 @@ impl Plane {
   pub fn new() -> Plane {
     Plane {
       id: GLOBAL_GEOMETRY_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
-      transform: RefCell::new(math::Matrix::new_identity_matrix(4)),
+      transform: Rc::new(math::Matrix::new_identity_matrix(4)),
       material: Rc::new(Material::new()),
       saved_ray: RefCell::new(None),
     }
@@ -207,12 +207,11 @@ impl Shape for Plane {
     self.id
   }
 
-  fn get_transform(&self) -> math::Matrix {
-    let a = self.transform.clone();
-    a.into_inner()
+  fn get_transform(&self) -> Rc<math::Matrix> {
+    self.transform.clone()
   }
-  fn set_transform(&self, transform: math::Matrix) {
-    self.transform.replace(transform);
+  fn set_transform(&mut self, transform: math::Matrix) {
+    self.transform = Rc::new(transform)
   }
   fn set_material(&mut self, material: Material) {
     self.material = Rc::new(material);

@@ -1,5 +1,4 @@
 use crate::raytracer::Intersection;
-use core::cell::RefCell;
 use std::rc::Rc;
 
 use super::PointLight;
@@ -33,7 +32,7 @@ impl World {
     mat.specular = 0.2;
     s1.material = Rc::new(mat);
     let mut s2 = Sphere::new();
-    s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
+    s2.transform = Rc::new(Matrix::scale(0.5, 0.5, 0.5));
     World {
       shapes: vec![Rc::new(s1), Rc::new(s2)],
       lights,
@@ -52,7 +51,7 @@ impl World {
     mat.ambient = ambience;
     s1.material = Rc::new(mat);
     let mut s2 = Sphere::new();
-    s2.transform = RefCell::new(Matrix::scale(0.5, 0.5, 0.5));
+    s2.transform = Rc::new(Matrix::scale(0.5, 0.5, 0.5));
     mat = Material::new();
     mat.ambient = ambience;
     s2.material = Rc::new(mat);

@@ -45,14 +45,18 @@ impl Camera {
     orientation * Matrix::translation(-from.x, -from.y, -from.z)
   }
   pub fn ray_for_pixel(&self, px: usize, py: usize) -> Ray {
+    // Calculate offset from edge of canvas to world pixel center
     let x_offset = (px as f64 + 0.5) * self.pixel_size;
     let y_offset = (py as f64 + 0.5) * self.pixel_size;
 
+    // this flips the coordinates around the center of the canvas
     let world_x = self.half_width - x_offset;
     let world_y = self.half_height - y_offset;
 
-    // Converting from object to world space:
     // The screen is defined to be at z = -1 relative to camera
+    // Camera is at (0,0,0)
+    // This transforms the canvas pixel and origin according to
+    // camera position and view vector
     let pixel = &self.transform.invert().expect("help") * &Tuple::point(world_x, world_y, -1.);
     let origin = &self.transform.invert().expect("help") * &Tuple::point(0., 0., 0.);
     let direction = (pixel - &origin).normalize();
@@ -71,16 +75,19 @@ impl Camera {
     }
     canvas
   }
+  // computes the size one pixel represents in the world:
   fn compute_pixel_size(hsize: usize, vsize: usize, field_of_view: f64) -> (f64, f64, f64) {
     let half_view = (field_of_view / 2.0).tan();
     let aspect = hsize as f64 / vsize as f64;
-    let half_width = match aspect.partial_cmp(&0.0).expect("") {
-      Ordering::Less => half_view * aspect,
-      _ => half_view,
+    let half_width = if aspect >= 1.0 {
+      half_view
+    } else {
+      half_view * aspect
     };
-    let half_height = match aspect.partial_cmp(&0.0).expect("") {
-      Ordering::Less => half_view,
-      _ => half_view / aspect,
+    let half_height = if aspect >= 1.0 {
+      half_view / aspect
+    } else {
+      half_view
     };
     (half_width, half_height, (half_width * 2.0) / hsize as f64)
   }

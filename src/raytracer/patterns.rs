@@ -4,7 +4,7 @@ use crate::color::Color;
 use crate::math;
 use crate::math::Matrix;
 use crate::math::Tuple;
-use core::cell::RefCell;
+
 use std::fmt;
 use std::rc::Rc;
 
@@ -14,11 +14,11 @@ pub trait Pattern: fmt::Debug {
     &self,
     object: Rc<dyn Shape>,
     point: &Tuple,
-    patternTransform: &Matrix,
+    pattern_transform: &Matrix,
   ) -> Color {
     let inverse_obj = object.get_transform().invert().unwrap();
     let object_space_point = &inverse_obj * point;
-    let pattern_space_point = &patternTransform.invert().unwrap() * &object_space_point;
+    let pattern_space_point = &pattern_transform.invert().unwrap() * &object_space_point;
     self.pattern_at(&pattern_space_point)
   }
   fn pattern_at_shape(&self, object: Rc<dyn Shape>, point: &Tuple) -> Color;
@@ -209,7 +209,7 @@ fn stripe_pattern_alternates_x() {
 #[test]
 fn stripe_with_object_transform() {
   let mut object = Sphere::new();
-  object.transform = RefCell::new(Matrix::scale(2.0, 2.0, 2.0));
+  object.transform = Rc::new(Matrix::scale(2.0, 2.0, 2.0));
   let pattern = StripePattern::new(white(), black());
   let c = pattern.pattern_at_shape(Rc::new(object), &Tuple::point(1.5, 0., 0.));
   assert_eq!(c, white());
@@ -227,7 +227,7 @@ fn stripe_with_pattern_transform() {
 #[test]
 fn stripe_with_object_and_pattern_transform() {
   let mut object = Sphere::new();
-  object.transform = RefCell::new(Matrix::scale(2.0, 2.0, 2.0));
+  object.transform = Rc::new(Matrix::scale(2.0, 2.0, 2.0));
   let mut pattern = StripePattern::new(white(), black());
   pattern.transform = Matrix::translation(0.5, 0., 0.);
   let c = pattern.pattern_at_shape(Rc::new(object), &Tuple::point(2.5, 0., 0.));
